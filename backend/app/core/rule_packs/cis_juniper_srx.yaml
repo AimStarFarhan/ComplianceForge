@@ -1,0 +1,222 @@
+# ComplianceForge Juniper SRX Rule Pack
+# Hand-verified, CIS-Benchmark-style rules. Mappings are ILLUSTRATIVE — they
+# point to the control concept covered by public CIS guidance, not verbatim
+# benchmark text.
+pack:
+  name: cis_juniper_srx
+  vendor: juniper_srx
+  version: "1.0"
+
+rules:
+  # ---- insecure management protocols ----
+  - rule_id: CF-SRX-001
+    title: "Telnet disabled, SSHv2 enforced"
+    maps_to: "CIS Juniper Benchmark concept: secure interactive management (illustrative mapping — not verbatim benchmark text)"
+    severity: critical
+    category: management_protocol
+    check: management.telnet_enabled != true and management.ssh_version == 2
+    remediation_template: "set system services ssh protocol-version v2\ndelete system services telnet"
+    explanation_pass: "SSHv2 only; telnet not enabled."
+    explanation_fail: "Telnet is enabled or SSH version is not pinned to v2."
+
+  - rule_id: CF-SRX-002
+    title: "Cleartext web management (HTTP) disabled"
+    maps_to: "CIS Juniper Benchmark concept: encrypted management services (illustrative mapping — not verbatim benchmark text)"
+    severity: high
+    category: management_protocol
+    check: management.http_mgmt_enabled != true
+    remediation_template: "delete system services web-management http\nset system services web-management https system-generated-certificate"
+    explanation_pass: "J-Web over HTTP is not enabled."
+    explanation_fail: "HTTP management interface is enabled — cleartext admin credentials."
+
+  - rule_id: CF-SRX-003
+    title: "Root login over SSH restricted"
+    maps_to: "CIS Juniper Benchmark concept: restrict root access (illustrative mapping — not verbatim benchmark text)"
+    severity: high
+    category: ssh_policy
+    check: auth.default_credentials_changed != false
+    remediation_template: "set system services ssh root-login deny"
+    explanation_pass: "Root SSH login is denied/password-restricted."
+    explanation_fail: "Root can log in over SSH without restriction."
+
+  # ---- ssh policy ----
+  - rule_id: CF-SRX-004
+    title: "Management idle-timeout configured (<= 10 minutes)"
+    maps_to: "CIS Juniper Benchmark concept: session timeout (illustrative mapping — not verbatim benchmark text)"
+    severity: medium
+    category: ssh_policy
+    check: management.idle_timeout_seconds != None and management.idle_timeout_seconds <= 600
+    remediation_template: "set system login class SUPER idle-timeout 10"
+    explanation_pass: "Idle management sessions time out within the window."
+    explanation_fail: "Sessions can persist indefinitely."
+
+  # ---- auth / AAA ----
+  - rule_id: CF-SRX-005
+    title: "Centralized authentication order configured (RADIUS/TACACS+)"
+    maps_to: "CIS Juniper Benchmark concept: centralized AAA (illustrative mapping — not verbatim benchmark text)"
+    severity: high
+    category: aaa
+    check: auth.aaa_enabled == true
+    remediation_template: "set system authentication-order [ radius password ]\nset system radius-server 10.20.30.40 secret <STRONG-SECRET>"
+    explanation_pass: "Authentication order references a central server."
+    explanation_fail: "No central authentication — local-only accounts."
+
+  - rule_id: CF-SRX-006
+    title: "Minimum password length >= 8"
+    maps_to: "CIS Juniper Benchmark concept: password policy (illustrative mapping — not verbatim benchmark text)"
+    severity: medium
+    category: password_policy
+    check: auth.password_min_length != None and auth.password_min_length >= 8
+    remediation_template: "set system login password minimum-length 8"
+    explanation_pass: "Minimum password length is enforced."
+    explanation_fail: "No minimum password length is enforced."
+
+  - rule_id: CF-SRX-007
+    title: "Login retry lockout configured"
+    maps_to: "CIS Juniper Benchmark concept: throttling (illustrative mapping — not verbatim benchmark text)"
+    severity: medium
+    category: authentication
+    check: auth.login_retry_lockout == true
+    remediation_template: "set system login retry-options tries-before-disconnect 3"
+    explanation_pass: "Failed-login throttling is configured."
+    explanation_fail: "No retry throttling — unthrottled brute force."
+
+  - rule_id: CF-SRX-008
+    title: "Central accounting enabled"
+    maps_to: "CIS Juniper Benchmark concept: accounting (illustrative mapping — not verbatim benchmark text)"
+    severity: medium
+    category: aaa
+    check: auth.aaa_accounting_enabled == true
+    remediation_template: "set system accounting events [ login change-log ]"
+    explanation_pass: "Login/config-change events are accounted centrally."
+    explanation_fail: "No accounting — admin actions not centrally recorded."
+
+  # ---- logging ----
+  - rule_id: CF-SRX-009
+    title: "Remote syslog configured"
+    maps_to: "CIS Juniper Benchmark concept: remote logging (illustrative mapping — not verbatim benchmark text)"
+    severity: high
+    category: syslog
+    check: logging.remote_logging_enabled == true
+    remediation_template: "set system syslog host 10.20.30.40 authorization info\nset system syslog host 10.20.30.40 daemon info"
+    explanation_pass: "Logs are forwarded off-box."
+    explanation_fail: "No remote syslog destination."
+
+  - rule_id: CF-SRX-010
+    title: "Interactive command logging enabled"
+    maps_to: "CIS Juniper Benchmark concept: admin action logging (illustrative mapping — not verbatim benchmark text)"
+    severity: medium
+    category: logging
+    check: logging.log_admin_access == true
+    remediation_template: "set system syslog file interactive interactive-commands any\nset system syslog file authorization interactive-commands any"
+    explanation_pass: "Operator CLI commands are logged."
+    explanation_fail: "CLI sessions are not logged — no admin audit trail."
+
+  # ---- security policy / zone ----
+  - rule_id: CF-SRX-011
+    title: "Default security policy denies traffic with logging"
+    maps_to: "CIS/STIG concept: default-deny posture (illustrative mapping — not verbatim benchmark text)"
+    severity: critical
+    category: zone_policy
+    check: acl.default_deny == true
+    remediation_template: "set security policies default-policy deny-all\nset security policies from-zone untrust to-zone trust policy DEFAULT-DENY then log session-close"
+    explanation_pass: "Default policy is deny (and at least one rule logs)."
+    explanation_fail: "Default policy is permissive — unmatched traffic flows."
+
+  - rule_id: CF-SRX-012
+    title: "Security policy rules log sessions"
+    maps_to: "CIS/STIG concept: policy logging (illustrative mapping — not verbatim benchmark text)"
+    severity: medium
+    category: acl_logging
+    check: acl.acl_logging_enabled == true or acl.rules == []
+    remediation_template: "set security policies from-zone untrust to-zone trust policy <POLICY-NAME> then log session-close"
+    explanation_pass: "At least one policy rule logs session close/initial."
+    explanation_fail: "Policies exist but none log — denied/allowed traffic invisible."
+
+  # ---- crypto ----
+  - rule_id: CF-SRX-013
+    title: "No weak IPsec DH groups (< 14)"
+    maps_to: "CIS/STIG concept: strong crypto (illustrative mapping — not verbatim benchmark text)"
+    severity: high
+    category: cryptography
+    check: crypto.ipsec_dh_group_weak != true
+    remediation_template: "set security ike proposal P-STD dh-group group14"
+    explanation_pass: "No DH group below 14 in use."
+    explanation_fail: "IKE/IPsec proposal uses a weak DH group (< 14)."
+
+  # ---- service hardening ----
+  - rule_id: CF-SRX-014
+    title: "Auto-install (autoinstallation) disabled"
+    maps_to: "CIS/STIG concept: disable auto-install services (illustrative mapping — not verbatim benchmark text)"
+    severity: medium
+    category: service_hardening
+    check: '"set system autoinstallation" not in services.unused_services'
+    remediation_template: "delete system autoinstallation"
+    explanation_pass: "Autoinstallation is not enabled."
+    explanation_fail: "Autoinstallation is enabled — device may auto-pull configs from untrusted sources."
+
+  # ---- banner ----
+  - rule_id: CF-SRX-015
+    title: "Login banner/message present"
+    maps_to: "CIS Juniper Benchmark concept: warning banner (illustrative mapping — not verbatim benchmark text)"
+    severity: low
+    category: banner
+    check: management.banner_present == true
+    remediation_template: 'set system login message "Authorized access only. All activity is monitored."'
+    explanation_pass: "Login banner configured."
+    explanation_fail: "No login warning message."
+
+  # ---- ntp ----
+  - rule_id: CF-SRX-016
+    title: "NTP configured"
+    maps_to: "CIS Juniper Benchmark concept: time sync (illustrative mapping — not verbatim benchmark text)"
+    severity: medium
+    category: ntp
+    check: management.ntp_configured == true
+    remediation_template: "set system ntp server 10.10.1.1\nset system ntp server 10.10.1.2"
+    explanation_pass: "NTP servers are configured."
+    explanation_fail: "No NTP — timestamp drift."
+
+  # ---- snmp ----
+  - rule_id: CF-SRX-017
+    title: "SNMP default community changed"
+    maps_to: "CIS Juniper Benchmark concept: SNMP hardening (illustrative mapping — not verbatim benchmark text)"
+    severity: critical
+    category: snmp_management
+    check: '"public" not in management.snmp_communities and "private" not in management.snmp_communities'
+    remediation_template: "delete snmp community public\nset snmp community <RANDOM-32-CHAR-STRING> authorization read-only"
+    explanation_pass: "No default SNMP communities in use."
+    explanation_fail: "Default SNMP community present."
+
+  - rule_id: CF-SRX-018
+    title: "SNMPv3 or restricted SNMP in use"
+    maps_to: "CIS Juniper Benchmark concept: SNMPv3 (illustrative mapping — not verbatim benchmark text)"
+    severity: medium
+    category: snmp_management
+    check: management.snmp_enabled != true or management.snmp_communities != []
+    remediation_template: "delete snmp community public\nset snmp v3 target-address <ADDR> parameters <PARAMS>"
+    explanation_pass: "SNMP is disabled or restricted."
+    explanation_fail: "SNMP enabled without restriction."
+
+  # ---- root/account hygiene ----
+  - rule_id: CF-SRX-019
+    title: "No plaintext password-statement in config"
+    maps_to: "CIS Juniper Benchmark concept: password storage (illustrative mapping — not verbatim benchmark text)"
+    severity: high
+    category: password_policy
+    check_type: length_below
+    check: "crypto.password_hashes_plaintext < 1"
+    remediation_template: "set system login password format sha512"
+    explanation_pass: "No plaintext password statements found."
+    explanation_fail: "Plaintext password statement detected in config."
+
+  # ---- logging level ----
+  - rule_id: CF-SRX-020
+    title: "Syslog severity at info or better"
+    maps_to: "CIS Juniper Benchmark concept: log level (illustrative mapping — not verbatim benchmark text)"
+    severity: low
+    category: syslog
+    check: logging.logging_level_informational != false
+    remediation_template: "set system syslog host <COLLECTOR> any info"
+    explanation_pass: "Info-level or better syslogging is configured."
+    explanation_fail: "Syslog severity is missing or above info (coarser)."

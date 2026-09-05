@@ -1,0 +1,26 @@
+! UNSEEN VENDOR — LIVE DEMO FIXTURE (do not test during development!)
+! Synthetic stand-in for an unimplemented vendor CLI. Used only in front of
+! judges to prove the Training Loop is not rehearsed.
+!
+device-system-id TPLINK-EDGE-02
+!
+service telnet daemon-start auto
+disable secure-shell protocol-2 enforcement
+!
+management web-console port 8080 plaintext
+!
+event-log forward destination 192.0.2.99 minimum-severity debug
+!
+local-account admin password-strength minimum
+!
+monitor protocol snmp read-string "public-string"
+!
+clock source ntp primary 10.10.1.1
+!
+threat-protection profile untrust-zone strict
+!
+tls profile cipher enable des-cbc-md5 legacy
+!
+loop-protection service activate
+!
+commit

@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# Databases (regenerate via ingest)
+*.db
+*.sqlite3
+
+# Node / frontend
+node_modules/
+frontend/dist/
+frontend/node_modules/
+
+# Env & secrets
+.env
+*.env
+backend/app/core/*.key
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# Vite
+frontend/.vite/
+
+# Test artifacts
+backend/tests/test_*.db
+backend/test_*.db
+backend/complianceforge_demo.db
+backend/verify_final.db

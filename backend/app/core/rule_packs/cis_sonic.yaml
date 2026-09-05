@@ -1,0 +1,177 @@
+# ComplianceForge SONiC Rule Pack
+# Hand-verified, CIS-Benchmark-style rules. Mappings are ILLUSTRATIVE — they
+# point to the control concept covered by public CIS guidance, not verbatim
+# benchmark text.
+pack:
+  name: cis_sonic
+  vendor: sonic
+  version: "1.0"
+
+rules:
+  # ---- management protocols ----
+  - rule_id: CF-SONIC-001
+    title: "Telnet feature disabled"
+    maps_to: "CIS concept: disable insecure remote management protocols (illustrative mapping — not verbatim benchmark text)"
+    severity: critical
+    category: management_protocol
+    check: management.telnet_enabled != true
+    remediation_template: "sudo config feature telnet disable"
+    explanation_pass: "Telnet feature is not enabled."
+    explanation_fail: "Telnet is enabled in FEATURE table — cleartext management."
+
+  - rule_id: CF-SONIC-002
+    title: "Cleartext HTTP REST disabled (HTTPS only)"
+    maps_to: "CIS concept: encrypted management services (illustrative mapping — not verbatim benchmark text)"
+    severity: high
+    category: management_protocol
+    check: management.http_mgmt_enabled != true
+    remediation_template: "sudo config feature http disable\nsudo config feature https enable"
+    explanation_pass: "Cleartext HTTP management is not enabled."
+    explanation_fail: "HTTP RESTAPI is enabled without TLS."
+
+  - rule_id: CF-SONIC-003
+    title: "SSH host key 2048+ bits"
+    maps_to: "CIS concept: strong host keys (illustrative mapping — not verbatim benchmark text)"
+    severity: medium
+    category: cryptography
+    check: crypto.key_modulus_bits != None and crypto.key_modulus_bits >= 2048
+    remediation_template: "ssh-keygen -t rsa -b 2048 -f /etc/sonic/ssh_host_rsa_key"
+    explanation_pass: "Host key meets the 2048-bit minimum."
+    explanation_fail: "Host key absent or below 2048 bits."
+
+  # ---- auth / AAA ----
+  - rule_id: CF-SONIC-004
+    title: "Centralized AAA (TACACS+/RADIUS) configured"
+    maps_to: "CIS concept: centralized authentication (illustrative mapping — not verbatim benchmark text)"
+    severity: high
+    category: aaa
+    check: auth.aaa_enabled == true
+    remediation_template: "sudo config tacplus add 10.20.30.40 --shared-secret <STRONG-SECRET>\nsudo config aaa authentication login tacacs+"
+    explanation_pass: "AAA table references central authentication."
+    explanation_fail: "No central AAA — local accounts only."
+
+  - rule_id: CF-SONIC-005
+    title: "Password minimum length >= 8"
+    maps_to: "CIS concept: password policy (illustrative mapping — not verbatim benchmark text)"
+    severity: medium
+    category: password_policy
+    check: auth.password_min_length != None and auth.password_min_length >= 8
+    remediation_template: 'Set "PASSWD|POLICIES" minlen in /etc/sonic/config_db.json'
+    explanation_pass: "Password policy table sets a minimum length."
+    explanation_fail: "No minimum password length is enforced."
+
+  - rule_id: CF-SONIC-006
+    title: "Root login over SSH disabled"
+    maps_to: "CIS concept: restrict root access (illustrative mapping — not verbatim benchmark text)"
+    severity: high
+    category: ssh_policy
+    check: auth.default_credentials_changed != false
+    remediation_template: "sudo config sshd disable-root-login"
+    explanation_pass: "Root SSH login is disabled."
+    explanation_fail: "Root can log in over SSH."
+
+  # ---- logging ----
+  - rule_id: CF-SONIC-007
+    title: "Remote syslog configured"
+    maps_to: "CIS concept: remote logging (illustrative mapping — not verbatim benchmark text)"
+    severity: high
+    category: syslog
+    check: logging.remote_logging_enabled == true
+    remediation_template: "sudo config syslog add 10.20.30.40"
+    explanation_pass: "SYSLOG_SERVER table populated."
+    explanation_fail: "No remote syslog destination."
+
+  - rule_id: CF-SONIC-008
+    title: "NTP configured"
+    maps_to: "CIS concept: time synchronization (illustrative mapping — not verbatim benchmark text)"
+    severity: medium
+    category: ntp
+    check: management.ntp_configured == true
+    remediation_template: "sudo config ntp add 10.10.1.1"
+    explanation_pass: "NTP_SERVER table populated."
+    explanation_fail: "No NTP servers."
+
+  # ---- ACL ----
+  - rule_id: CF-SONIC-009
+    title: "Management plane ACL bound (SNMP/SSH restricted)"
+    maps_to: "CIS concept: restrict management access (illustrative mapping — not verbatim benchmark text)"
+    severity: high
+    category: access_control
+    check: acl.management_acl_bound == true
+    remediation_template: 'Create ACL_TABLE type MGMT and bind to management interfaces.'
+    explanation_pass: "An ACL is bound to the management plane."
+    explanation_fail: "No management ACL — device accepts management traffic from anywhere."
+
+  - rule_id: CF-SONIC-010
+    title: "Default-deny ACL rules present (drop-any logged)"
+    maps_to: "CIS concept: default-deny posture (illustrative mapping — not verbatim benchmark text)"
+    severity: medium
+    category: access_control
+    check: acl.default_deny == true
+    remediation_template: 'Add ACL_RULE with PACKET_ACTION=DROP for IP_TYPE=ANY at the end of the table.'
+    explanation_pass: "Drop-any default rule present."
+    explanation_fail: "No explicit drop-any rule."
+
+  # ---- service hardening ----
+  - rule_id: CF-SONIC-011
+    title: "No weak ciphers configured"
+    maps_to: "CIS concept: strong crypto (illustrative mapping — not verbatim benchmark text)"
+    severity: high
+    category: cryptography
+    check_type: length_below
+    check: "crypto.weak_ciphers_present < 1"
+    remediation_template: "Remove DES/RC4/MD5 cipher entries from config."
+    explanation_pass: "No weak ciphers detected."
+    explanation_fail: "Weak cipher entry detected."
+
+  - rule_id: CF-SONIC-012
+    title: "Login banner present"
+    maps_to: "CIS concept: warning banner (illustrative mapping — not verbatim benchmark text)"
+    severity: low
+    category: banner
+    check: management.banner_present == true
+    remediation_template: "sudo config banner add 'Authorized access only.'"
+    explanation_pass: "Banner configured."
+    explanation_fail: "No login banner."
+
+  - rule_id: CF-SONIC-013
+    title: "Default SNMP community not in use"
+    maps_to: "CIS concept: SNMP hardening (illustrative mapping — not verbatim benchmark text)"
+    severity: critical
+    category: snmp_management
+    check: '"public" not in management.snmp_communities and "private" not in management.snmp_communities'
+    remediation_template: "sudo config snmp delete community public\nsudo config snmp add community <RANDOM-32-CHAR-STRING> ro"
+    explanation_pass: "No default communities present."
+    explanation_fail: "Default SNMP community present."
+
+  - rule_id: CF-SONIC-014
+    title: "SNMP restricted or disabled"
+    maps_to: "CIS concept: SNMP hardening (illustrative mapping — not verbatim benchmark text)"
+    severity: medium
+    category: snmp_management
+    check: management.snmp_enabled != true or management.snmp_communities != []
+    remediation_template: "sudo config feature snmp disable"
+    explanation_pass: "SNMP disabled or restricted with non-default community."
+    explanation_fail: "SNMP enabled with default community."
+
+  # ---- unused features ----
+  - rule_id: CF-SONIC-015
+    title: "Unused features (non-essential services) disabled"
+    maps_to: "CIS concept: disable unused services (illustrative mapping — not verbatim benchmark text)"
+    severity: medium
+    category: service_hardening
+    check_type: length_below
+    check: "services.unused_services < 1"
+    remediation_template: "sudo config feature <FEATURE> disable"
+    explanation_pass: "No risky unused features are enabled."
+    explanation_fail: "Non-essential enabled features detected — reduce attack surface."
+
+  - rule_id: CF-SONIC-016
+    title: "SSH password authentication hardened"
+    maps_to: "CIS concept: SSH hardening (illustrative mapping — not verbatim benchmark text)"
+    severity: medium
+    category: ssh_policy
+    check: auth.password_complexity_enabled != false
+    remediation_template: "sudo config sshd password-authentication disable"
+    explanation_pass: "Password authentication is hardened or disabled (key-based)."
+    explanation_fail: "Password authentication is unrestricted — keyless login possible."

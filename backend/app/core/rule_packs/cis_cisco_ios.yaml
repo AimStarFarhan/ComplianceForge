@@ -1,0 +1,222 @@
+# ComplianceForge Cisco IOS Rule Pack
+# Hand-verified, CIS-Benchmark-style rules. Mappings are ILLUSTRATIVE — they
+# point to the control concept covered by public CIS guidance, not verbatim
+# benchmark text.
+pack:
+  name: cis_cisco_ios
+  vendor: cisco_ios
+  version: "1.0"
+
+rules:
+  # ---- insecure management protocols ----
+  - rule_id: CF-CISCO-001
+    title: "Disable Telnet, require SSHv2"
+    maps_to: "CIS Cisco IOS Benchmark §1.1.2 (illustrative mapping — not verbatim benchmark text)"
+    severity: critical
+    category: management_protocol
+    check: management.telnet_enabled != true and management.ssh_version == 2
+    remediation_template: "line vty 0 4\n transport input ssh\n no transport input telnet\nip ssh version 2"
+    explanation_pass: "Telnet is disabled and SSHv2 is enforced for interactive management."
+    explanation_fail: "Telnet (cleartext) is permitted or SSH is not pinned to v2. Interactive management credentials could be sniffed."
+
+  - rule_id: CF-CISCO-002
+    title: "Disable insecure HTTP management server"
+    maps_to: "CIS Cisco IOS Benchmark §1.3 (illustrative mapping — not verbatim benchmark text)"
+    severity: high
+    category: management_protocol
+    check: management.http_mgmt_enabled == false
+    remediation_template: "no ip http server"
+    explanation_pass: "Cleartext HTTP device management is disabled."
+    explanation_fail: "The IOS embedded HTTP server is enabled; management sessions traverse unencrypted HTTP."
+
+  - rule_id: CF-CISCO-003
+    title: "Vty lines protected by an inbound access-class"
+    maps_to: "CIS Cisco IOS Benchmark §1.5 (illustrative mapping — not verbatim benchmark text)"
+    severity: high
+    category: access_control
+    check: services.vty_acl_bound == true
+    remediation_template: "ip access-list standard MGMT-HOSTS\n permit 10.10.10.0 0.0.0.255\n deny any log\nline vty 0 4\n access-class MGMT-HOSTS in"
+    explanation_pass: "An inbound ACL restricts which hosts may open management sessions."
+    explanation_fail: "Vty lines accept connections from any source IP — no management-plane ACL is bound."
+
+  # ---- ssh policy ----
+  - rule_id: CF-CISCO-004
+    title: "SSH idle/exec timeout configured (<= 10 minutes)"
+    maps_to: "CIS Cisco IOS Benchmark §1.6 (illustrative mapping — not verbatim benchmark text)"
+    severity: medium
+    category: ssh_policy
+    check: management.idle_timeout_seconds != None and management.idle_timeout_seconds <= 600
+    remediation_template: "line vty 0 4\n exec-timeout 10 0"
+    explanation_pass: "Idle management sessions are reaped within the window."
+    explanation_fail: "Idle sessions can persist indefinitely (default 0 = never expires)."
+
+  # ---- auth / AAA ----
+  - rule_id: CF-CISCO-005
+    title: "AAA new-model enabled (authentication + authorization)"
+    maps_to: "CIS Cisco IOS Benchmark §2.1 (illustrative mapping — not verbatim benchmark text)"
+    severity: high
+    category: aaa
+    check: auth.aaa_enabled == true
+    remediation_template: "aaa new-model\naaa authentication login default local\naaa authorization exec default local"
+    explanation_pass: "AAA framework is active; per-user authentication and authorization are enforced."
+    explanation_fail: "Device relies on line-level passwords only; no per-user AAA."
+
+  - rule_id: CF-CISCO-006
+    title: "Minimum password length >= 8"
+    maps_to: "CIS Cisco IOS Benchmark §2.3 (illustrative mapping — not verbatim benchmark text)"
+    severity: medium
+    category: password_policy
+    check: auth.password_min_length != None and auth.password_min_length >= 8
+    remediation_template: "security passwords min-length 8"
+    explanation_pass: "Enforced minimum credential length policy is present."
+    explanation_fail: "No minimum password length is enforced — short, brute-forceable credentials are accepted."
+
+  - rule_id: CF-CISCO-007
+    title: "Default/empty enable credential changed"
+    maps_to: "CIS Cisco IOS Benchmark §2.2 (illustrative mapping — not verbatim benchmark text)"
+    severity: critical
+    category: authentication
+    check: auth.default_credentials_changed == true
+    remediation_template: "enable secret <STRONG-HASHED-SECRET>\nno enable password"
+    explanation_pass: "Enable access uses a hashed secret rather than the default/empty password."
+    explanation_fail: "Enable password is set in cleartext form or unchanged from default."
+
+  - rule_id: CF-CISCO-008
+    title: "Service password-encryption enabled"
+    maps_to: "CIS Cisco IOS Benchmark §2.4 (illustrative mapping — not verbatim benchmark text)"
+    severity: medium
+    category: password_policy
+    check: auth.password_encryption_enabled == true
+    remediation_template: "service password-encryption"
+    explanation_pass: "Local passwords are stored obfuscated rather than in cleartext."
+    explanation_fail: "Local passwords appear in cleartext in the running config."
+
+  - rule_id: CF-CISCO-009
+    title: "Login lockout / rate limiting configured"
+    maps_to: "CIS Cisco IOS Benchmark §2.5 (illustrative mapping — not verbatim benchmark text)"
+    severity: medium
+    category: authentication
+    check: auth.login_retry_lockout == true
+    remediation_template: "login block-for 120 attempts 3 within 60"
+    explanation_pass: "Repeated failed logins trigger a block window."
+    explanation_fail: "No lockout — online brute force of management credentials is unthrottled."
+
+  # ---- logging ----
+  - rule_id: CF-CISCO-010
+    title: "Remote syslog configured"
+    maps_to: "CIS Cisco IOS Benchmark §3.1 (illustrative mapping — not verbatim benchmark text)"
+    severity: high
+    category: syslog
+    check: logging.remote_logging_enabled == true
+    remediation_template: "logging host 10.20.30.40\nlogging trap informational"
+    explanation_pass: "Device forwards logs to a remote collector for retention/analysis."
+    explanation_fail: "Logs live only on the device — lost on reboot, invisible to SIEM."
+
+  - rule_id: CF-CISCO-011
+    title: "Admin access logging (archive/log config) enabled"
+    maps_to: "CIS Cisco IOS Benchmark §3.2 (illustrative mapping — not verbatim benchmark text)"
+    severity: medium
+    category: logging
+    check: logging.log_admin_access == true
+    remediation_template: "archive\n log config\n  logging enable\n  notify syslog"
+    explanation_pass: "Configuration changes by admins are logged."
+    explanation_fail: "Admin config changes are not logged — no audit trail for who changed what."
+
+  # ---- ACL / zone policy ----
+  - rule_id: CF-CISCO-012
+    title: "ACL entries with explicit logging"
+    matches: acl_logging
+    maps_to: "CIS Cisco IOS Benchmark §4.2 (illustrative mapping — not verbatim benchmark text)"
+    severity: medium
+    category: acl_logging
+    check: acl.acl_logging_enabled == true or acl.rules == []
+    remediation_filter_note: "Ensure deny entries include the 'log' keyword."
+    remediation_template: "ip access-list extended EDGE-IN\n deny ip any any log"
+    explanation_pass: "ACL deny/drop entries carry log keywords or no risky ACLs are present."
+    explanation_fail: "ACL entries drop traffic silently without logging, defeating forensic review."
+
+  # ---- crypto ----
+  - rule_id: CF-CISCO-013
+    title: "No weak ciphers / hashes in device config"
+    maps_to: "CIS Cisco IOS Benchmark §5.1 (illustrative mapping — not verbatim benchmark text)"
+    severity: high
+    category: cryptography
+    check_type: length_below
+    check: "crypto.weak_ciphers_present < 1"
+    remediation_template: "ip ssh server algorithm encryption aes256-gcm@openssh.com\nip ssh server algorithm mac hmac-sha2-256"
+    explanation_pass: "No DES/RC4/MD5-class algorithms are configured."
+    explanation_fail: "Weak cipher/hash algorithm(s) detected in the configuration."
+
+  - rule_id: CF-CISCO-014
+    title: "SSH key modulus >= 2048 bits"
+    maps_to: "CIS Cisco IOS Benchmark §5.2 (illustrative mapping — not verbatim benchmark text)"
+    severity: medium
+    category: cryptography
+    check: crypto.key_modulus_bits != None and crypto.key_modulus_bits >= 2048
+    remediation_template: "crypto key generate rsa modulus 2048"
+    explanation_pass: "RSA key meets the 2048-bit minimum."
+    explanation_fail: "RSA key is absent or below 2048 bits."
+
+  # ---- service hardening ----
+  - rule_id: CF-CISCO-015
+    title: "CDP disabled on the device"
+    maps_to: "CIS Cisco IOS Benchmark §6.1 (illustrative mapping — not verbatim benchmark text)"
+    severity: low
+    category: service_hardening
+    check: management.cdp_enabled == false
+    remediation_template: "no cdp run"
+    explanation_pass: "Cisco Discovery Protocol is disabled globally."
+    explanation_fail: "CDP is active — advertises topology/version info to adjacent devices."
+
+  - rule_id: CF-CISCO-016
+    title: "Unused small services disabled (tcp/udp-small-servers, finger, bootp)"
+    maps_to: "CIS Cisco IOS Benchmark §6.2 (illustrative mapping — not verbatim benchmark text)"
+    severity: medium
+    category: service_hardening
+    check: services.unused_services == [] and services.bootp_enabled != true and services.finger_enabled != true and services.pad_enabled != true
+    remediation_template: "no service tcp-small-servers\nno service udp-small-servers\nno ip finger\nno ip bootp server\nno service pad"
+    explanation_pass: "Legacy diagnostic services are disabled."
+    explanation_fail: "One or more legacy services (echo/discard/finger/bootp/pad) are enabled."
+
+  # ---- banner ----
+  - rule_id: CF-CISCO-017
+    title: "Login banner / warning message present"
+    maps_to: "CIS Cisco IOS Benchmark §7.1 (illustrative mapping — not verbatim benchmark text)"
+    severity: low
+    category: banner
+    check: management.banner_present == true
+    remediation_template: 'banner motd #Authorized access only. All activity is monitored. #'
+    explanation_pass: "A warning banner is set on login."
+    explanation_fail: "No login warning banner is configured."
+
+  # ---- ntp ----
+  - rule_id: CF-CISCO-018
+    title: "NTP configured for consistent timestamps"
+    maps_to: "CIS Cisco IOS Benchmark §3.3 (illustrative mapping — not verbatim benchmark text)"
+    severity: medium
+    category: ntp
+    check: management.ntp_configured == true
+    remediation_template: "ntp server 10.10.1.1\nntp server 10.10.1.2 prefer"
+    explanation_pass: "Clock sync is maintained for correlation of security events."
+    explanation_fail: "No NTP — log timestamps drift, breaking event correlation."
+
+  # ---- snmp ----
+  - rule_id: CF-CISCO-019
+    title: "SNMP community strings changed from defaults"
+    maps_to: "CIS Cisco IOS Benchmark §8.1 (illustrative mapping — not verbatim benchmark text)"
+    severity: critical
+    category: snmp_management
+    check: '"public" not in management.snmp_communities and "private" not in management.snmp_communities'
+    explanation_pass: "No default SNMP communities (public/private) present."
+    explanation_fail: "Default SNMP community string(s) detected — near-universal reconnaissance target."
+    remediation_template: "no snmp-server community public RO\nsnmp-server community <RANDOM-32-CHAR-STRING> RO 99"
+
+  - rule_id: CF-CISCO-020
+    title: "SNMP disabled if unused"
+    maps_to: "CIS Cisco IOS Benchmark §8.2 (illustrative mapping — not verbatim benchmark text)"
+    severity: low
+    category: snmp_management
+    check: management.snmp_enabled != true or management.snmp_communities != []
+    explanation_pass: "SNMP is either fully disabled or restricted with non-default communities."
+    explanation_fail: "SNMP is enabled with default/absent community restrictions."
+    remediation_template: "no snmp-server\n! or restrict: snmp-server community <RANDOM-STRING> RO <MGMT-ACL>"

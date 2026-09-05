@@ -1,0 +1,176 @@
+# ComplianceForge Generic Rule Pack — for UNSEEN vendors audited purely via
+# human-confirmed Training Loop mappings. Every finding from this pack is
+# tagged source='ai_suggested_human_confirmed' by the audit route.
+#
+# IMPORTANT HONESTY NOTE (mirrors the rule-engine contract): these checks run
+# against an INFERRED baseline. Confidence is capped by the mapping coverage —
+# a 'pass' here means "no violating evidence was found in confirmed mappings",
+# not "verified against a full parser".
+pack:
+  name: generic_inferred
+  vendor: unseen_vendor
+  version: "1.0"
+  inferred: true
+
+rules:
+  - rule_id: CF-GEN-001
+    title: "Telnet (cleartext management) not enabled"
+    maps_to: "CIS concept: disable insecure remote management protocols (illustrative mapping — inferred via human-confirmed categories)"
+    severity: critical
+    category: management_protocol
+    check: management.telnet_enabled != true
+    remediation_template: "disable telnet daemon\nstart secure-shell protocol-2 enforcement"
+    explanation_pass: "Confirmed mappings show telnet disabled or absent."
+    explanation_fail: "Human-confirmed mapping indicates telnet (cleartext mgmt) is enabled on this device."
+
+  - rule_id: CF-GEN-002
+    title: "Cleartext HTTP management not enabled"
+    maps_to: "CIS concept: encrypted management services (illustrative mapping — inferred)"
+    severity: high
+    category: management_protocol
+    check: management.http_mgmt_enabled != true
+    remediation_template: "disable management web-console plaintext"
+    explanation_pass: "No confirmed mapping indicates cleartext HTTP management."
+    explanation_fail: "Human-confirmed mapping indicates cleartext web management is enabled."
+
+  - rule_id: CF-GEN-003
+    title: "SSHv2 secure management present"
+    maps_to: "CIS concept: SSHv2 only (illustrative mapping — inferred)"
+    severity: high
+    category: ssh_policy
+    check: management.ssh_enabled == true and management.ssh_version != 1
+    remediation_template: "enable secure-shell protocol-2\nstart secure-shell daemon"
+    explanation_pass: "Confirmed mappings indicate SSHv2-based management is enabled."
+    explanation_fail: "No confirmed mapping indicates SSHv2 secure management (may be absent or v1)."
+
+  - rule_id: CF-GEN-004
+    title: "Centralized AAA / authentication configured"
+    maps_to: "CIS concept: centralized AAA (illustrative mapping — inferred)"
+    severity: high
+    category: aaa
+    check: auth.aaa_enabled == true
+    remediation_template: "configure authentication-order [ radius tacacs local ]"
+    explanation_pass: "Confirmed mappings indicate central authentication is configured."
+    explanation_fail: "No central AAA evidence — device appears local-credentials only."
+
+  - rule_id: CF-GEN-005
+    title: "Minimum password policy present (>= 8)"
+    maps_to: "CIS concept: password policy (illustrative mapping — inferred)"
+    severity: medium
+    category: password_policy
+    check: auth.password_min_length != None and auth.password_min_length >= 8
+    remediation_template: "set password-policy minimum-length 8"
+    explanation_pass: "Confirmed mapping shows a minimum length policy."
+    explanation_fail: "No password minimum-length policy found in confirmed mappings (or below 8)."
+
+  - rule_id: CF-GEN-006
+    title: "Remote syslog forwarding configured"
+    maps_to: "CIS concept: remote logging (illustrative mapping — inferred)"
+    severity: high
+    category: syslog
+    check: logging.remote_logging_enabled == true
+    remediation_template: "configure event-log forward destination <SYSLOG-SERVER-IP> minimum-severity informational"
+    explanation_pass: "Confirmed mapping shows a remote log destination."
+    explanation_fail: "No remote syslog destination in confirmed mappings — logs are local-only."
+
+  - rule_id: CF-GEN-007
+    title: "No weak ciphers (DES/RC4/MD5/SHA1) in confirmed mappings"
+    maps_to: "CIS concept: strong crypto (illustrative mapping — inferred)"
+    severity: high
+    category: cryptography
+    check_type: length_below
+    check: "crypto.weak_ciphers_present < 1"
+    remediation_template: "disable tls profile cipher des-cbc-md5 legacy\nenable cipher-suite aes256-gcm"
+    explanation_pass: "No weak cipher references found in confirmed mappings."
+    explanation_fail: "Human-confirmed mapping references a weak cipher (DES/3DES/RC4/MD5/SHA1/export/null)."
+
+  - rule_id: CF-GEN-008
+    title: "NTP time synchronization configured"
+    maps_to: "CIS concept: time sync (illustrative mapping — inferred)"
+    severity: medium
+    category: ntp
+    check: management.ntp_configured == true
+    remediation_template: "configure clock source ntp primary <NTP-SERVER-IP>"
+    explanation_pass: "Confirmed mapping shows NTP configuration."
+    explanation_fail: "No NTP evidence in confirmed mappings — timestamps will drift."
+
+  - rule_id: CF-GEN-009
+    title: "Login warning banner present"
+    maps_to: "CIS concept: warning banner (illustrative mapping — inferred)"
+    severity: low
+    category: banner
+    check: management.banner_present == true
+    remediation_template: "configure banner 'Authorized access only. All activity is monitored.'"
+    explanation_pass: "Confirmed mapping shows a login banner."
+    explanation_fail: "No login banner found in confirmed mappings."
+
+  - rule_id: CF-GEN-010
+    title: "Default/weak SNMP community not in use"
+    maps_to: "CIS concept: SNMP hardening (illustrative mapping — inferred)"
+    severity: critical
+    category: snmp_management
+    check: '"public" not in management.snmp_communities and "private" not in management.snmp_communities'
+    remediation_template: "remove monitor protocol snmp read-string public\nset read-string <RANDOM-32-CHAR-STRING>"
+    explanation_pass: "No default SNMP communities in confirmed mappings."
+    explanation_fail: "Human-confirmed mapping shows a default-like SNMP community string — reconnaissance target."
+
+  - rule_id: CF-GEN-011
+    title: "Default-deny posture on inter-zone policy"
+    maps_to: "CIS/STIG concept: default-deny posture (illustrative mapping — inferred)"
+    severity: critical
+    category: zone_policy
+    check: acl.default_deny == true
+    remediation_template: "configure threat-protection profile untrust-zone default-deny"
+    explanation_pass: "Confirmed mapping indicates an explicit default-deny posture."
+    explanation_fail: "No default-deny evidence in confirmed mappings — unmatched traffic posture unknown/permissive."
+
+  - rule_id: CF-GEN-012
+    title: "Unused/risky services not enabled"
+    maps_to: "CIS concept: disable unused services (illustrative mapping — inferred)"
+    severity: medium
+    category: service_hardening
+    check_type: length_below
+    check: "services.unused_services < 1"
+    remediation_template: "disable loop-protection service\nshutdown non-essential daemons"
+    explanation_pass: "No risky enabled services detected in confirmed mappings."
+    explanation_fail: "Human-confirmed mappings show non-essential services left enabled."
+
+  - rule_id: CF-GEN-013
+    title: "Root/admin remote login restricted"
+    maps_to: "CIS concept: restrict root access (illustrative mapping — inferred)"
+    severity: high
+    category: authentication
+    check: auth.default_credentials_changed != false
+    remediation_template: "disable local-account admin remote-login\nset password-strength minimum"
+    explanation_pass: "Confirmed mappings show root/admin access restricted or strong-credentialed."
+    explanation_fail: "Human-confirmed mapping indicates weak/default admin credentials or unrestricted root login."
+
+  - rule_id: CF-GEN-014
+    title: "Admin access logging enabled"
+    maps_to: "CIS concept: admin action logging (illustrative mapping — inferred)"
+    severity: medium
+    category: logging
+    check: logging.log_admin_access == true
+    remediation_template: "enable event-log admin-session capture"
+    explanation_pass: "Confirmed mappings show admin command/session logging."
+    explanation_fail: "No admin-access logging evidence in confirmed mappings."
+
+  - rule_id: CF-GEN-015
+    title: "ACL/policy rules carry logging"
+    maps_to: "CIS concept: policy logging (illustrative mapping — inferred)"
+    severity: medium
+    category: acl_logging
+    check: acl.acl_logging_enabled == true or acl.rules == []
+    remediation_template: "append log keyword to deny policies"
+    explanation_pass: "Confirmed mappings show logging on policy rules (or no risky policies)."
+    explanation_fail: "Policy rules exist in confirmed mappings but none carry logging."
+
+  - rule_id: CF-GEN-016
+    title: "Password complexity/quality policy configured"
+    maps_to: "CIS concept: password complexity (illustrative mapping — inferred)"
+    severity: medium
+    category: password_policy
+    check: auth.password_complexity_enabled == true
+    remediation_template: "enable password-strength complexity upper lower digit"
+    explanation_pass: "Confirmed mapping shows a password complexity policy."
+    explanation_fail: "No password complexity policy in confirmed mappings."
