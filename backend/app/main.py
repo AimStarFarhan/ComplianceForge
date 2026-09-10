@@ -78,6 +78,29 @@ app.include_router(dashboard_router)
 app.include_router(chat_router)
 
 
+class _StripApiPrefixMiddleware:
+    """On Vercel, the backend service receives the ORIGINAL public path
+    (/api/health), while locally it serves /health directly. This pure-ASGI
+    middleware strips the /api prefix when present so both work unchanged."""
+
+    def __init__(self, asgi_app):
+        self.asgi_app = asgi_app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            path = scope.get("path", "")
+            if path == "/api" or path.startswith("/api/"):
+                scope = dict(scope)
+                scope["path"] = path[4:] or "/"
+                raw = scope.get("raw_path")
+                if raw and len(raw) > 4:
+                    scope["raw_path"] = raw[4:]
+        await self.asgi_app(scope, receive, send)
+
+
+handler = _StripApiPrefixMiddleware(app)
+
+
 class LoginBody(BaseModel):
     username: str
     password: str

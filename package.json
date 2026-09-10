@@ -1,9 +1,0 @@
-{
-  "name": "complianceforge",
-  "private": true,
-  "version": "1.0.0",
-  "scripts": {
-    "build": "cd frontend && npm ci && npm run build",
-    "dev": "cd frontend && npm run dev"
-  }
-}

@@ -35,3 +35,5 @@ backend/tests/test_*.db
 backend/test_*.db
 backend/complianceforge_demo.db
 backend/verify_final.db
+
+.vercel
