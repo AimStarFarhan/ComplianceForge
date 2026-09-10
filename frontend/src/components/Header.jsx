@@ -1,6 +1,8 @@
 import { Link, useLocation } from "react-router-dom";
 import { useApi, API } from "../lib/api";
 import { scoreColor } from "../lib/ui";
+import Logo from "./Logo";
+import { ThemeToggle } from "./ThemeToggle";
 
 export default function Header() {
   const { data } = useApi("/dashboard");
@@ -14,37 +16,32 @@ export default function Header() {
   const compliant = (data?.devices || []).filter((d) => (d.compliance_pct ?? 0) >= 80).length;
 
   const nav = [
-    { to: "/", label: "Dashboard", icon: "grid_view", end: true },
-    { to: "/devices", label: "Devices", icon: "router" },
-    { to: "/training", label: "Training Loop", icon: "psychology" },
-    { to: "/upload", label: "Ingest", icon: "add_circle" },
-    { to: "/reports", label: "Reports", icon: "verified" },
+    { to: "/console", label: "Dashboard", icon: "grid_view", end: true },
+    { to: "/console/devices", label: "Devices", icon: "router" },
+    { to: "/console/training", label: "Training Loop", icon: "psychology" },
+    { to: "/console/upload", label: "Ingest", icon: "add_circle" },
+    { to: "/console/reports", label: "Reports", icon: "verified" },
   ];
 
   return (
     <header className="fixed top-0 w-full z-50 bg-tacticalOlive border-b border-camoSeam text-softSage shadow-md">
       <div className="h-16 w-full px-6 flex items-center justify-between gap-4">
-        {/* Left: brand */}
-        <div className="flex items-center gap-3 min-w-[300px]">
-          <div className="h-8 w-8 rounded bg-olivePanel border border-camoSeam flex items-center justify-center font-mono font-bold text-sm text-softSage">
-            CF
-          </div>
+        {/* Left: brand — click to return to landing page */}
+        <Link to="/" className="flex items-center gap-3 min-w-[300px] group" title="Back to landing page">
+          <Logo className="h-9 w-9 rounded-lg" />
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
-              <span className="font-display font-bold text-base text-white tracking-tight">ComplianceForge</span>
-              <span className="font-mono text-[10px] font-semibold px-2 py-0.5 rounded bg-camoSeam text-softSage border border-softSage/30">
-                SIH26155 / NTRO
-              </span>
+              <span className="font-display font-semibold text-base text-softSage tracking-tight group-hover:opacity-80 transition-opacity">ComplianceForge</span>
             </div>
             <span className="font-sans text-xs text-sageMuted">
               Unified Network Control Plane v1.0 (Advisory-Only Remediation)
             </span>
           </div>
-        </div>
+        </Link>
 
         {/* Framework pills */}
         <div className="hidden xl:flex items-center gap-1.5 bg-olivePanel px-2.5 py-1 rounded-md border border-camoSeam">
-          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-sprucePine border border-mutedMeadow/50 text-white font-mono text-[11px] font-medium">
+          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-sprucePine border border-mutedMeadow/50 text-[#FCF9F0] font-mono text-[11px] font-medium">
             <span className="w-1.5 h-1.5 rounded-full bg-mutedMeadow animate-pulse"></span>
             <span>CIS-Style Pack v1</span>
           </div>
@@ -64,17 +61,18 @@ export default function Header() {
               Engine Online | Fleet: <strong className="text-softSage font-mono">{fleetScore}</strong>
             </span>
           </div>
-          <Link to="/upload" className="flex items-center gap-1.5 bg-sprucePine hover:bg-sprucePineHover text-white text-xs font-semibold px-3 py-2 rounded border border-[#3E5C47] transition-all shadow-sm">
+          <Link to="/console/upload" className="flex items-center gap-1.5 bg-sprucePine hover:bg-sprucePineHover text-[#FCF9F0] text-xs font-semibold px-3 py-2 rounded border border-[#8A3A1D] transition-all shadow-sm">
             <span className="material-symbols-outlined text-[18px]">add_circle</span>
             <span>Ingest Raw Config</span>
           </Link>
+          <ThemeToggle />
           <div className="h-6 w-px bg-camoSeam hidden sm:block"></div>
           <div className="flex items-center gap-2.5">
             <div className="text-right hidden sm:block">
-              <div className="text-xs font-semibold text-white leading-tight font-display">Auditor SEC-9</div>
+              <div className="text-xs font-semibold text-softSage leading-tight font-display">Auditor SEC-9</div>
               <div className="font-mono text-[10px] text-sageMuted">Admin / Human-in-the-Loop</div>
             </div>
-            <div className="w-8 h-8 rounded bg-camoSeam border border-[#526350] flex items-center justify-center text-softSage">
+            <div className="w-8 h-8 rounded bg-camoSeam border border-[#5C4A35] flex items-center justify-center text-softSage">
               <span className="material-symbols-outlined text-[18px]">person</span>
             </div>
           </div>

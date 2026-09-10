@@ -1,0 +1,39 @@
+! =====================================================================
+! DEMO FIXTURE A — "ArubaOS-CX style" switch (totally different syntax family)
+! Unknown to ComplianceForge on purpose — used LIVE in the demo.
+! Story: branch switch with classic mistakes — telnet on, weak SNMP,
+! cleartext web mgmt, weak crypto, no remote syslog.
+! =====================================================================
+!
+device-name BRNCH-SW-07
+!
+vlan 10 name USERS
+vlan 20 name VOICE
+!
+interface 1/1/7
+   description UPLINK-TO-CORE
+   no routing
+   exit
+!
+telnet server enable
+no ssh public-key enforcement
+!
+web-management plaintext port 80
+!
+snmp-server community "public" unrestricted
+!
+crypto tls-profile legacy-ciphers
+   cipher des-cbc-sha1 enable
+   exit
+!
+logging local-buffer size 4096
+!
+ntp server 10.10.1.1 iburst
+!
+banner ready "Authorized access only."
+!
+password-policy minimum-length 4
+!
+service loop-protect activate
+!
+commit

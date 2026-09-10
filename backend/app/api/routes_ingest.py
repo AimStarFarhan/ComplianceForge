@@ -14,6 +14,7 @@ from app.api.auth import verify_token
 from app.core.parsers import detect_vendor, get_parser, vendor_from_string
 from app.core.parsers.base_parser import VENDOR_LABELS, VENDOR_UNSEEN
 from app.core.rule_cache import RuleCache
+from app.core.security import upload_is_safe
 from app.db import get_db
 from app.models import ConfigSnapshot, Device
 
@@ -34,10 +35,14 @@ async def ingest_config(
     db: Session = Depends(get_db),
 ):
     raw_bytes = await file.read()
-    if len(raw_bytes) > MAX_UPLOAD_BYTES:
-        raise HTTPException(413, "Config file exceeds 2 MB limit")
-    text = raw_bytes.decode("utf-8", errors="replace")
     filename = file.filename or "upload.cfg"
+    ok, reason = upload_is_safe(filename, len(raw_bytes))
+    if not ok:
+        raise HTTPException(415, reason)
+    # reject embedded NUL / high binary content — configs are plain text
+    if b"\x00" in raw_bytes:
+        raise HTTPException(415, "Binary content detected — upload plain-text CLI configs only.")
+    text = raw_bytes.decode("utf-8", errors="replace")
 
     detected = detect_vendor(text, filename)
     chosen_vendor = vendor_from_string(vendor) if vendor else detected

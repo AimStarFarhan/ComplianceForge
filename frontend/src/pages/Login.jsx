@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api, setToken, API } from "../lib/api";
+import Logo from "../components/Logo";
 
 export default function Login() {
   const [username, setUsername] = useState("admin");
@@ -14,7 +15,7 @@ export default function Login() {
     try {
       const data = await api("/login", { method: "POST", body: { username, password } });
       setToken(data.token);
-      navigate("/");
+      navigate("/console");
     } catch (err) {
       setError(err.message);
     }
@@ -24,10 +25,10 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-tacticalOlive">
       <form onSubmit={submit} className="bg-warm-sandstone border border-weatheredTaupe rounded-lg p-8 w-96 space-y-4 shadow-md">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="font-display text-2xl font-bold text-peatCharcoal">ComplianceForge</span>
-            <span className="font-mono text-[10px] font-semibold px-2 py-0.5 rounded bg-creamParchment text-sprucePine border border-weatheredTaupe">SIH26155 / NTRO</span>
-          </div>
+          <Link to="/" className="flex items-center gap-2.5 group" title="Back to landing page">
+            <Logo className="h-9 w-9 rounded-lg" />
+            <span className="font-display text-2xl font-semibold text-peatCharcoal group-hover:text-sprucePine transition-colors">ComplianceForge</span>
+          </Link>
           <div className="font-mono text-[10px] uppercase tracking-wider text-taupe-muted mt-1">Unified network control plane</div>
         </div>
         <div className="space-y-3">

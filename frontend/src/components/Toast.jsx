@@ -14,7 +14,7 @@ export function ToastProvider({ children }) {
     <ToastCtx.Provider value={showToast}>
       {children}
       <div
-        className={`fixed bottom-14 right-6 pointer-events-none transition-all duration-300 z-[60] flex items-center gap-2.5 bg-tacticalOlive border border-camoSeam text-white px-4 py-2.5 rounded-md shadow-2xl ${
+        className={`fixed bottom-14 right-6 pointer-events-none transition-all duration-300 z-[60] flex items-center gap-2.5 bg-tacticalOlive border border-camoSeam text-softSage px-4 py-2.5 rounded-md shadow-2xl ${
           toast ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
         }`}
       >

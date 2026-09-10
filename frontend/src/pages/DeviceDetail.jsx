@@ -7,14 +7,14 @@ import { useToast, copyText } from "../components/Toast";
 const order = { critical: 0, high: 1, medium: 2, low: 3 };
 
 function RemediationCard({ f, toast }) {
-  const sevColor = f.severity === "high" || f.severity === "critical" ? "#B84A39" : "#C27803";
+  const sevColor = f.severity === "high" || f.severity === "critical" ? "var(--fail)" : "var(--warn)";
   return (
     <div className="card overflow-hidden">
       <div className="p-4 border-l-4 flex flex-col gap-3" style={{ borderColor: sevColor }}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="badge text-white uppercase" style={{ background: sevColor }}>
+              <span className="badge text-[#FCF9F0] uppercase" style={{ background: sevColor }}>
                 {f.severity} SEVERITY
               </span>
               <span className="font-display text-sm font-bold text-peatCharcoal">{f.rule_id} — {f.title}</span>
@@ -22,11 +22,11 @@ function RemediationCard({ f, toast }) {
             <span className="font-mono text-xs text-taupe-muted mt-1">
               Maps to: {f.maps_to || "—"}
               {f.source === "ai_suggested_human_confirmed" && (
-                <span className="ml-2 px-1.5 py-0.5 rounded bg-sprucePine text-white font-bold text-[10px]">AI + HUMAN-CONFIRMED SOURCE</span>
+                <span className="ml-2 px-1.5 py-0.5 rounded bg-sprucePine text-[#FCF9F0] font-bold text-[10px]">AI + HUMAN-CONFIRMED SOURCE</span>
               )}
             </span>
           </div>
-          <span className="badge uppercase" style={{ background: f.status === "pass" ? "#E8F2EC" : "#FBECEB", color: f.status === "pass" ? "#2D6A4F" : "#B84A39", border: `1px solid ${f.status === "pass" ? "#2D6A4F40" : "#B84A3940"}` }}>
+          <span className="badge uppercase" style={{ background: f.status === "pass" ? "var(--pass-wash)" : "var(--fail-wash)", color: f.status === "pass" ? "var(--pass)" : "var(--fail)", border: `1px solid ${f.status === "pass" ? "color-mix(in srgb, var(--pass) 25%, transparent)" : "color-mix(in srgb, var(--fail) 40%, transparent)"}` }}>
             {f.status}
           </span>
         </div>
@@ -91,6 +91,9 @@ export default function DeviceDetail() {
     try {
       const res = await api(`/audit/${encodeURIComponent(deviceId)}`, { method: "POST" });
       toast(`Audit complete — ${res.summary.pass_count} pass / ${res.summary.fail_count} fail / ${res.unparsed_count} to training queue`);
+      window.dispatchEvent(
+        new CustomEvent("cf:audited", { detail: { deviceId, summary: res.summary } })
+      );
       reload();
     } catch (e) {
       toast(`Audit failed: ${e.message}`);
@@ -100,14 +103,9 @@ export default function DeviceDetail() {
   };
 
   const exportPdf = async () => {
-    toast("Compiling NTRO cryptographic PDF audit report…");
+    toast("Compiling cryptographic PDF audit report…");
     try {
-      const token = window.localStorage.getItem("cf-token");
-      const r = await fetch(`${import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000"}/report/${encodeURIComponent(deviceId)}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const blob = await r.blob();
+      const blob = await api(`/report/${encodeURIComponent(deviceId)}`);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -162,9 +160,9 @@ export default function DeviceDetail() {
                 <span
                   className="px-2.5 py-0.5 rounded font-mono text-[11px] font-bold uppercase flex items-center gap-1.5"
                   style={{
-                    background: fails.length ? "#FBECEB" : "#E8F2EC",
-                    color: fails.length ? "#B84A39" : "#2D6A4F",
-                    border: `1px solid ${fails.length ? "#B84A3966" : "#2D6A4F66"}`,
+                    background: fails.length ? "var(--fail-wash)" : "var(--pass-wash)",
+                    color: fails.length ? "var(--fail)" : "var(--pass)",
+                    border: `1px solid ${fails.length ? "color-mix(in srgb, var(--fail) 40%, transparent)" : "color-mix(in srgb, var(--pass) 40%, transparent)"}`,
                   }}
                 >
                   <span className="w-1.5 h-1.5 rounded-full animate-ping" style={{ background: "currentColor" }}></span>
@@ -186,7 +184,7 @@ export default function DeviceDetail() {
                 <svg className="w-13 h-13 -rotate-90" viewBox="0 0 48 48">
                   <circle className="text-weatheredTaupe" cx="24" cy="24" fill="none" r="20" stroke="currentColor" strokeWidth="4.5" />
                   <circle
-                    cx="24" cy="24" fill="none" r="20" stroke={s ? ((s.compliance_pct ?? 0) >= 80 ? "#2D6A4F" : (s.compliance_pct ?? 0) >= 50 ? "#C27803" : "#B84A39") : "#D6D0C4"}
+                    cx="24" cy="24" fill="none" r="20" stroke={s ? ((s.compliance_pct ?? 0) >= 80 ? "var(--pass)" : (s.compliance_pct ?? 0) >= 50 ? "var(--warn)" : "var(--fail)") : "var(--line)"}
                     strokeDasharray="125.6" strokeDashoffset={s ? 125.6 * (1 - s.compliance_pct / 100) : 125.6}
                     strokeLinecap="round" strokeWidth="4.5"
                   />
@@ -198,7 +196,7 @@ export default function DeviceDetail() {
               </div>
               <div className="flex flex-col">
                 <span className="font-mono text-[10px] uppercase tracking-wider text-taupe-muted">CIS-Style Compliance Index</span>
-                <span className="font-sans text-xs font-bold" style={{ color: s ? ((s.compliance_pct ?? 0) >= 80 ? "#2D6A4F" : "#C27803") : "#726F67" }}>
+                <span className="font-sans text-xs font-bold" style={{ color: s ? ((s.compliance_pct ?? 0) >= 80 ? "var(--pass)" : "var(--warn)") : "var(--ink-soft)" }}>
                   {s ? `${s.pass_count} of ${s.total_rules} checks pass` : "Run first audit"}
                 </span>
                 <span className="font-mono text-[10px] text-taupe-muted">{data.vendor_label} rule pack</span>
@@ -214,7 +212,7 @@ export default function DeviceDetail() {
                 <span>Copy Runbook</span>
               </button>
               {data.vendor === "unseen_vendor" && !s && (
-                <button onClick={trainDevice} disabled={training} className="btn-primary !bg-ochreHazard !border-[#8F5802]">
+                <button onClick={trainDevice} disabled={training} className="btn-primary !bg-ochreHazard !border-[#8A5A1C]">
                   <span className="material-symbols-outlined text-[17px]">model_training</span>
                   <span>{training ? "Training…" : "Train Vendor"}</span>
                 </button>
@@ -289,7 +287,7 @@ export default function DeviceDetail() {
             <div className="font-mono text-xs text-taupe-muted mt-0.5">{(data?.history || []).at(-1)?.unparsed_count ?? 0} unrecognized lines</div>
           </div>
           <div className="font-mono text-[10px] text-taupe-muted truncate">
-            Routed to <Link to="/training" className="text-sprucePine font-bold">adaptive AI queue</Link>
+            Routed to <Link to="/console/training" className="text-sprucePine font-bold">adaptive AI queue</Link>
           </div>
         </div>
       </div>
@@ -310,8 +308,8 @@ export default function DeviceDetail() {
                     onClick={() => setTab(key)}
                     className={
                       tab === key
-                        ? "px-2.5 py-1.5 rounded text-xs font-semibold bg-warm-sandstone text-peatCharcoal border border-weatheredTaupe shadow-sm"
-                        : "px-2.5 py-1.5 rounded text-xs font-medium text-taupe-muted hover:text-peatCharcoal hover:bg-warm-sandstone/70"
+                        ? "px-2.5 py-1.5 rounded text-xs font-semibold bg-warm-sandstone text-peatCharcoal border border-weatheredTaupe shadow-sm transition-all"
+                        : "px-2.5 py-1.5 rounded text-xs font-medium text-taupe-muted hover:text-peatCharcoal hover:bg-warm-sandstone/70 transition-all active:scale-95"
                     }
                   >
                     {label}
@@ -361,7 +359,7 @@ export default function DeviceDetail() {
                 <div className="font-mono text-[11px] text-taupe-muted">No live SSH polling — by design</div>
               </div>
             </div>
-            <span className="px-2.5 py-1 rounded bg-sprucePine text-white font-mono text-[10px] font-semibold tracking-wider">HUMAN-UPLOADED</span>
+            <span className="px-2.5 py-1 rounded bg-sprucePine text-[#FCF9F0] font-mono text-[10px] font-semibold tracking-wider">HUMAN-UPLOADED</span>
           </div>
         </div>
 
@@ -416,9 +414,9 @@ export default function DeviceDetail() {
                     <span
                       className="font-mono text-[10px] uppercase font-bold px-1.5 py-0.5 rounded border"
                       style={{
-                        color: good ? "#2D6A4F" : "#C27803",
-                        background: good ? "#2D6A4F10" : "#FDF5E6",
-                        borderColor: good ? "#2D6A4F30" : "#C2780340",
+                        color: good ? "var(--pass)" : "var(--warn)",
+                        background: good ? "color-mix(in srgb, var(--pass) 6%, transparent)" : "var(--warn-wash)",
+                        borderColor: good ? "color-mix(in srgb, var(--pass) 19%, transparent)" : "color-mix(in srgb, var(--warn) 25%, transparent)",
                       }}
                     >
                       {h.compliance_pct}% COMPLIANCE

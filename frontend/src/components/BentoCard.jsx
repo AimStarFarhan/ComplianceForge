@@ -32,11 +32,11 @@ export function ScoreGauge({ pct, size = 52 }) {
   const r = (size - 9) / 2;
   const circ = 2 * Math.PI * r;
   const offset = circ * (1 - (pct || 0) / 100);
-  const color = (pct ?? 0) >= 80 ? "#2D6A4F" : (pct ?? 0) >= 50 ? "#C27803" : "#B84A39";
+  const color = (pct ?? 0) >= 80 ? "var(--pass)" : (pct ?? 0) >= 50 ? "var(--warn)" : "var(--fail)";
   return (
     <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} fill="none" r={r} stroke="#D6D0C4" strokeWidth="4.5" />
+        <circle cx={size / 2} cy={size / 2} fill="none" r={r} stroke="var(--line)" strokeWidth="4.5" />
         <circle
           cx={size / 2}
           cy={size / 2}

@@ -1,7 +1,6 @@
 # ComplianceForge
 
 AI-augmented, vendor-agnostic network security compliance auditor.
-**SIH26155 (NTRO) — Quantum Forgers**
 
 Ingest raw CLI configs (Cisco IOS / Juniper SRX / SONiC), normalize to one
 vendor-neutral baseline, audit against CIS-style rule packs, train unknown

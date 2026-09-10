@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { API, useApi } from "../lib/api";
+import { useApi } from "../lib/api";
 import { useToast } from "../components/Toast";
 
 export default function ReportPreview() {
@@ -9,26 +9,20 @@ export default function ReportPreview() {
 
   const devices = (data?.devices || []).filter((d) => d.audited);
 
-  const download = (d) => {
+  const download = async (d) => {
     toast("Compiling PDF audit report…");
-    const token = window.localStorage.getItem("cf-token");
-    fetch(`${API}/report/${encodeURIComponent(d.device_id)}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.blob();
-      })
-      .then((blob) => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `complianceforge_${d.device_id}.pdf`;
-        a.click();
-        URL.revokeObjectURL(url);
-        setMsg(`Downloaded complianceforge_${d.device_id}.pdf`);
-      })
-      .catch((e) => setMsg(`Report failed: ${e.message} — audit the device first.`));
+    try {
+      const blob = await api(`/report/${encodeURIComponent(d.device_id)}`);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `complianceforge_${d.device_id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setMsg(`Downloaded complianceforge_${d.device_id}.pdf`);
+    } catch (e) {
+      setMsg(`Report failed: ${e.message} — audit the device first.`);
+    }
   };
 
   return (
@@ -53,7 +47,7 @@ export default function ReportPreview() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {devices.map((d) => {
           const pct = d.compliance_pct;
-          const color = pct >= 80 ? "#2D6A4F" : pct >= 50 ? "#C27803" : "#B84A39";
+          const color = pct >= 80 ? "var(--pass)" : pct >= 50 ? "var(--warn)" : "var(--fail)";
           return (
             <div key={d.device_id} className="card p-4 flex items-center justify-between gap-4">
               <div>

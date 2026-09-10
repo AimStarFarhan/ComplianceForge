@@ -87,7 +87,7 @@ export default function UploadIngest() {
               type="file"
               accept=".cfg,.txt,.json,.log"
               onChange={(e) => setFile(e.target.files?.[0] || null)}
-              className="w-full text-sm px-3 py-2 rounded-md bg-sandstoneLight border border-weatheredTaupe text-peatCharcoal file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-sprucePine file:text-white file:font-semibold file:text-xs"
+              className="w-full text-sm px-3 py-2 rounded-md bg-sandstoneLight border border-weatheredTaupe text-peatCharcoal file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-sprucePine file:text-[#FCF9F0] file:font-semibold file:text-xs"
             />
           </div>
           <div>
@@ -139,8 +139,8 @@ export default function UploadIngest() {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Link to={`/devices/${encodeURIComponent(result.device_id)}`} className="btn-primary !py-1.5">Open Device →</Link>
-                    <Link to="/training" className="btn-ghost !py-1.5">Training Queue ({result.unparsed_count})</Link>
+                    <Link to={`/console/devices/${encodeURIComponent(result.device_id)}`} className="btn-primary !py-1.5">Open Device →</Link>
+                    <Link to="/console/training" className="btn-ghost !py-1.5">Training Queue ({result.unparsed_count})</Link>
                   </div>
                 </div>
 
@@ -178,7 +178,7 @@ export default function UploadIngest() {
                             <span className="material-symbols-outlined text-[17px]">model_training</span>
                             <span>{busy ? "Training…" : "Train on this data"}</span>
                           </button>
-                          <Link to="/training" className="btn-ghost">
+                          <Link to="/console/training" className="btn-ghost">
                             <span className="material-symbols-outlined text-[17px]">rate_review</span>
                             <span>Review line-by-line</span>
                           </Link>
@@ -200,7 +200,7 @@ export default function UploadIngest() {
                           Previously-trained mappings matched every line in this file. Full rule checks now apply —
                           run the audit.
                         </div>
-                        <Link to={`/devices/${encodeURIComponent(result.device_id)}`} className="btn-primary mt-3">
+                        <Link to={`/console/devices/${encodeURIComponent(result.device_id)}`} className="btn-primary mt-3">
                           <span className="material-symbols-outlined text-[17px]">play_arrow</span>
                           <span>Run Audit on this device</span>
                         </Link>

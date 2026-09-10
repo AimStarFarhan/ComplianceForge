@@ -26,7 +26,7 @@ function QueueCard({ entry, onConfirm, onReject, busy }) {
         </div>
         <div className="text-right shrink-0">
           <div className="label-xs">AI Proposal</div>
-          <div className="font-mono text-xs mt-0.5 font-bold" style={{ color: low ? "#C27803" : "#2D6A4F" }}>
+          <div className="font-mono text-xs mt-0.5 font-bold" style={{ color: low ? "var(--warn)" : "var(--pass)" }}>
             {entry.ai_category || "—"} {entry.ai_confidence != null && `(${Math.round(entry.ai_confidence * 100)}%)`}
           </div>
           {low && <div className="font-mono text-[9px] uppercase mt-0.5 text-ochreHazard font-bold">Needs human eyes</div>}
@@ -113,7 +113,7 @@ export default function TrainingLoop() {
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-display text-xl text-peatCharcoal font-bold tracking-tight">Human-in-the-Loop Adaptive Learning</span>
-                <span className="px-2 py-0.5 rounded bg-sprucePine text-white font-mono text-[10px] font-bold uppercase tracking-wider">Adaptive AI</span>
+                <span className="px-2 py-0.5 rounded bg-sprucePine text-[#FCF9F0] font-mono text-[10px] font-bold uppercase tracking-wider">Adaptive AI</span>
               </div>
               <div className="font-mono text-xs text-taupe-muted mt-2 max-w-2xl leading-relaxed">
                 The AI layer <strong className="text-peatCharcoal">never issues pass/fail verdicts</strong>. It only proposes
@@ -188,7 +188,7 @@ export default function TrainingLoop() {
                     <td className="font-mono text-[11px]">{m.category}</td>
                     <td>
                       {m.ai_suggested ? (
-                        <span className="badge bg-sprucePine text-white">AI + HUMAN</span>
+                         <span className="badge bg-sprucePine text-[#FCF9F0]">AI + HUMAN</span>
                       ) : (
                         <span className="status-na">HUMAN</span>
                       )}

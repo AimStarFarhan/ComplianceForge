@@ -1,8 +1,8 @@
 export function scoreColor(pct) {
-  if (pct === null || pct === undefined) return "#726F67";
-  if (pct >= 80) return "#2D6A4F";
-  if (pct >= 50) return "#C27803";
-  return "#B84A39";
+  if (pct === null || pct === undefined) return "var(--ink-soft)";
+  if (pct >= 80) return "var(--pass)";
+  if (pct >= 50) return "var(--warn)";
+  return "var(--fail)";
 }
 
 export function timeAgo(iso) {

@@ -1,0 +1,32 @@
+# ======================================================================
+# DEMO FIXTURE B — "Palo Alto PAN-OS style" firewall (set syntax family)
+# Unknown to ComplianceForge on purpose — used LIVE in the demo.
+# Story: perimeter firewall in bad shape — mgmt HTTP open, admin idle
+# sessions never expire, weak IPsec, default SNMP, permissive policy.
+# ======================================================================
+#
+devicehost PERIM-FW-01
+#
+set deviceconfig system idle-timeout 0
+#
+set mgmt-interface settings http-server enabled yes
+set mgmt-interface settings ssh-server enabled yes
+set mgmt-interface settings ssh protocol-version any
+#
+set snmp-community public read-only
+#
+set network profiles ike crypto-profile weak-proposal
+set network profiles ike crypto-profile weak-proposal encryption dh1 des-md5
+#
+set security-policy rule ALLOW-ALL
+set security-policy rule ALLOW-ALL from any to any application any action allow
+#
+set deviceconfig system remote-syslog none
+#
+set deviceconfig system ntp-servers ntp-1 10.10.1.1
+#
+set deviceconfig system login-banner empty
+#
+set deviceconfig system admin-credentials default password-strength weak
+#
+commit-confirmed

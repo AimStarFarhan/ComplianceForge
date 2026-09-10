@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 
-export const API = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
+// Local dev: Vite proxies /api -> 127.0.0.1:8000. On Vercel: same-origin /api.
+// Fallback to direct backend URL for any other setup.
+export const API = import.meta.env.VITE_API_BASE ?? (import.meta.env.DEV ? "" : "/api");
 
 const TOKEN_KEY = "cf-token";
 
@@ -40,13 +42,22 @@ export async function api(path, { method = "GET", body, files, isForm = false } 
   }
   if (!res.ok) {
     let detail = "";
-    try {
-      const j = await res.json();
-      detail = j.detail || JSON.stringify(j);
-    } catch {
+    const isJson = (res.headers.get("content-type") || "").includes("json");
+    if (isJson) {
+      try {
+        const j = await res.json();
+        detail = j.detail || JSON.stringify(j);
+      } catch {
+        detail = res.statusText;
+      }
+    } else {
       detail = res.statusText;
     }
     throw new ApiError(res.status, typeof detail === "string" ? detail : JSON.stringify(detail));
+  }
+  // PDF and other binary responses — caller handles the blob
+  if ((res.headers.get("content-type") || "").includes("application/pdf")) {
+    return res.blob();
   }
   return res.json();
 }

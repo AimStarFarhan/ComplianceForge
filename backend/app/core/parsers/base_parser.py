@@ -50,43 +50,92 @@ class BaseParser(abc.ABC):
 
 
 def detect_vendor(config_text: str, filename: str = "") -> str:
-    """Best-effort vendor detection from config syntax fingerprints."""
+    """Best-effort vendor detection from config syntax fingerprints.
+
+    Strategy: score POSITIVE evidence per vendor (multi-line, weighted), then
+    also score foreign-syntax signals. A vendor wins only if it has positive
+    evidence AND no stronger foreign signals — otherwise the config routes
+    to the unseen-vendor path (Training Loop), which is always the safe
+    default for unrecognized syntax.
+    """
     lowered = config_text.lower()
 
-    # Juniper: set security / set system / hierarchy + header text
-    if (
-        "set system" in lowered
-        or "set security" in lowered
-        or "set interfaces" in lowered
-        or "set routing-options" in lowered
-        or "set groups" in lowered
-        or "system {" in lowered
-        or "security {" in lowered
-    ):
-        return VENDOR_JUNIPER_SRX
+    def _count(pattern: str) -> int:
+        return len(re.findall(pattern, config_text, re.MULTILINE | re.IGNORECASE))
 
-    # SONiC: JSON {"<table>": {...}} with CONFIGDB tables or sudo config commands
-    if re.search(r'^\s*"\w[\w-]*"\s*:\s*\{', config_text, re.MULTILINE) or re.search(
-        r'"(INTERFACE|VLAN|NTP|SYSLOG_SERVER|AAA|DEVICE_METADATA|SNMP_COMMUNITY|ACL_TABLE|MGMT_PORT|TELEMETRY|FEATURE|BANNER)"\s*:', config_text
-    ):
-        return VENDOR_SONIC
-    if "config banner" in lowered or "sudo config" in lowered or "sonic" in lowered:
-        return VENDOR_SONIC
+    # ---- Juniper positive signals (Junos set-style hierarchy) ----
+    juniper_score = (
+        _count(r"^set (system|security|interfaces|routing-options|groups|protocols|vlans|chassis|snmp)\b")
+        + _count(r"^\s*(system|security|interfaces|routing-options)\s*\{")
+    )
 
-    # Cisco IOS: hostname/username/version style CLI
-    if re.search(r"^(hostname|username|enable secret|ip domain-name|crypto key generate)", config_text, re.MULTILINE | re.IGNORECASE) or (
-        "ip ssh version" in lowered
-    ):
-        return VENDOR_CISCO_IOS
+    # ---- SONiC positive signals (CONFIG_DB JSON tables / sonic CLI) ----
+    sonic_score = (
+        len(re.findall(r'"(DEVICE_METADATA|ACL_TABLE|ACL_RULE|SNMP_COMMUNITY|SYSLOG_SERVER|NTP_SERVER|FEATURE|TACPLUS_SERVER|BANNER|SSH_SERVER)"\s*:', config_text))
+        + _count(r"^sudo config\s")
+    )
+    if "sonic" in lowered:
+        sonic_score += 5
 
-    # strongly-vendor-flavored CLI lines — even without a full header, these
-    # fingerprints identify the vendor family, not just any single line
-    if re.search(r"^(ip|snmp-server|line vty|interface \S+|router |aaa |service )", config_text, re.MULTILINE) and re.search(
-        r"(snmp-server |exec-timeout |access-list |ip http |ip ssh |banner motd)", lowered
-    ):
-        return VENDOR_CISCO_IOS
+    # ---- Cisco IOS positive signals ----
+    cisco_score = (
+        _count(r"^(hostname|username|enable secret|ip domain-name|crypto key generate)\b")
+        + _count(r"^ip (ssh|http)\b")
+        + _count(r"^line (vty|console|aux)\b")
+        + _count(r"^(interface|router)\s+\S+")
+        + _count(r"^(aaa|service|snmp-server|logging|ntp server|banner motd|access-list|ip access-list)\b")
+    )
 
-    if filename:
+    # ---- Foreign-syntax signals: things ComplianceForge's 3 parsers never emit.
+    # Any of these present means the config is NOT one of the 3 known vendors,
+    # even if some generic lines (hostname/ntp server/banner) look familiar.
+    foreign_markers = [
+        r"^devicehost\b",                 # PAN-OS style
+        r"^device-name\b",                # ArubaOS-CX style
+        r"^config system\b",              # FortiOS style
+        r"^config (global|log|firewall|network)\b",
+        r"^set deviceconfig\b",           # PAN-OS deviceconfig
+        r"^set mgmt-interface\b",         # PAN-OS mgmt
+        r"^set snmp-community\b",         # PAN-OS snmp
+        r"^set security-policy\b",        # PAN-OS policy
+        r"^set network profiles\b",       # PAN-OS ike
+        r"^commit-confirmed\b",
+        r"^vlan \d+ name\b",              # Aruba vlan naming
+        r"^web-management\b",             # Aruba web mgmt
+        r"^crypto tls-profile\b",         # Aruba crypto profile
+        r"^password-policy\b",            # Aruba passwd policy
+        r"^loop-protect\b",
+        r"^banner ready\b",               # Aruba banner verb
+        r"^interface 1/1/\d",             # Aruba slot/port naming (1/1/7)
+        r"^no ssh public-key\b",          # Aruba ssh phrasing
+        r"^set admin-sport\b",            # FortiOS
+        r"^set admin-telnet-port\b",      # FortiOS
+        r"^set admin-ftp\b",              # FortiOS
+        r"^set ssh-version\b",            # FortiOS (vs Cisco 'ip ssh version')
+        r"^set admin-password-min-length\b",
+        r"^set community-name\b",         # FortiOS snmp
+        r"^set ntpserver\b",              # FortiOS ntp
+        r"^set ttl-default\b",            # FortiOS session ttl
+        r"^edit \"",                      # FortiOS edit blocks
+        r"^\s*next$",                     # FortiOS next terminator
+    ]
+    foreign_hits = sum(1 for pat in foreign_markers if re.search(pat, config_text, re.MULTILINE | re.IGNORECASE))
+
+    # Decision: a known vendor needs REAL positive evidence, and fewer/equal
+    # foreign markers than its own signal strength. If foreign syntax markers
+    # are present at all, require the known-vendor signal to dominate 3:1.
+    scores = {
+        VENDOR_JUNIPER_SRX: juniper_score,
+        VENDOR_SONIC: sonic_score,
+        VENDOR_CISCO_IOS: cisco_score,
+    }
+    best_vendor, best_score = max(scores.items(), key=lambda kv: kv[1])
+
+    if best_score >= 3 and (foreign_hits == 0 or best_score >= 3 * foreign_hits):
+        return best_vendor
+
+    # filename hints are only trusted when there is NO foreign syntax
+    if foreign_hits == 0 and filename:
         fl = filename.lower()
         if "juniper" in fl or "srx" in fl or "junos" in fl:
             return VENDOR_JUNIPER_SRX

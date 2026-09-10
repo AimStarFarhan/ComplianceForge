@@ -22,10 +22,10 @@ export default function Sidebar() {
   const totalMappings = training?.total_mappings ?? 0;
 
   const nav = [
-    { to: "/", label: "Dashboard & Fleet", icon: "grid_view", end: true },
-    { to: "/training", label: "Training Loop", icon: "psychology", tag: "Adaptive AI" },
-    { to: "/devices", label: "Audits & Remediation", icon: "terminal" },
-    { to: "/reports", label: "Reports & Evidence", icon: "verified" },
+    { to: "/console", label: "Dashboard & Fleet", icon: "grid_view", end: true },
+    { to: "/console/training", label: "Training Loop", icon: "psychology", tag: "Adaptive AI" },
+    { to: "/console/devices", label: "Audits & Remediation", icon: "terminal" },
+    { to: "/console/reports", label: "Reports & Evidence", icon: "verified" },
   ];
 
   return (
@@ -37,17 +37,17 @@ export default function Sidebar() {
             <span className="font-mono text-[10px] uppercase text-sageMuted tracking-wider">Fleet Audit Scope</span>
             <span
               className="font-mono text-xs font-bold px-1.5 py-0.5 rounded"
-              style={{ background: fleet >= 80 ? "#2D6A4F" : fleet >= 50 ? "#C27803" : "#B84A39", color: "#fff" }}
+              style={{ background: fleet >= 80 ? "var(--pass)" : fleet >= 50 ? "var(--warn)" : "var(--fail)", color: "var(--card)" }}
             >
               {fleet !== null && fleet !== undefined ? `${fleet}% Score` : "—"}
             </span>
           </div>
-          <div className="flex items-center justify-between text-white mt-1">
+          <div className="flex items-center justify-between text-softSage mt-1">
             <span className="font-display text-base font-bold">{deviceCount} Devices</span>
             <span
               className={`font-mono text-[11px] px-1.5 py-0.5 rounded border ${
                 compliant > 0
-                  ? "bg-mutedMeadow/20 text-[#A2D3BA] border-mutedMeadow/40"
+                  ? "bg-mutedMeadow/20 text-softSage border-mutedMeadow/40"
                   : "bg-oliveInk text-sageMuted border-camoSeam"
               }`}
             >
@@ -57,7 +57,7 @@ export default function Sidebar() {
           <div className="w-full bg-oliveInk h-1.5 rounded-full mt-2 overflow-hidden border border-camoSeam">
             <div
               className="h-full rounded-full"
-              style={{ width: `${fleet || 0}%`, background: scoreColor(fleet) === "var(--pass)" ? "#2D6A4F" : fleet >= 50 ? "#C27803" : "#B84A39" }}
+              style={{ width: `${fleet || 0}%`, background: scoreColor(fleet) === "var(--pass)" ? "var(--pass)" : fleet >= 50 ? "var(--warn)" : "var(--fail)" }}
             ></div>
           </div>
         </div>
@@ -73,8 +73,8 @@ export default function Sidebar() {
                 end={item.end}
                 className={({ isActive }) =>
                   isActive
-                    ? "flex items-center justify-between px-3 py-2 rounded-md bg-olivePanel text-white border-l-4 border-mutedMeadow font-semibold text-xs shadow-sm"
-                    : "flex items-center justify-between px-3 py-2 rounded-md text-sageMuted hover:bg-oliveHover hover:text-white transition-all text-xs font-medium"
+                    ? "flex items-center justify-between px-3 py-2 rounded-md bg-olivePanel text-softSage border-l-4 border-mutedMeadow font-semibold text-xs shadow-sm"
+                    : "flex items-center justify-between px-3 py-2 rounded-md text-sageMuted hover:bg-oliveHover hover:text-softSage transition-all text-xs font-medium"
                 }
               >
                 <div className="flex items-center gap-2.5">
@@ -103,7 +103,7 @@ export default function Sidebar() {
                   <span>{v.name}</span>
                   <span
                     className="w-1.5 h-1.5 rounded-full"
-                    style={{ background: online ? "#2D6A4F" : "#434F42" }}
+                    style={{ background: online ? "var(--pass)" : "#434F42" }}
                   ></span>
                 </div>
               );
@@ -117,15 +117,15 @@ export default function Sidebar() {
           <div className="px-1 space-y-1 font-mono text-[11px] text-softSage">
             <div className="flex items-center justify-between">
               <span className="text-sageMuted">Human-confirmed mappings</span>
-              <span className="text-white font-bold">{totalMappings}</span>
+              <span className="text-softSage font-bold">{totalMappings}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sageMuted">Auto-matches served</span>
-              <span className="text-white font-bold">{training?.total_matches ?? 0}</span>
+              <span className="text-softSage font-bold">{training?.total_matches ?? 0}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sageMuted">AI-confirmed share</span>
-              <span className="text-white font-bold">
+              <span className="text-softSage font-bold">
                 {totalMappings ? `${Math.round(((training?.ai_confirmed ?? 0) / totalMappings) * 100)}%` : "—"}
               </span>
             </div>
@@ -136,7 +136,7 @@ export default function Sidebar() {
       <div className="p-3 border-t border-camoSeam bg-oliveDeep">
         <div className="flex items-center justify-between text-sageMuted font-mono text-[11px]">
           <span className="flex items-center gap-1.5">
-            <span className="material-symbols-outlined text-[15px] text-softSage">lock</span>NTRO Secure Node
+            <span className="material-symbols-outlined text-[15px] text-softSage">lock</span>Secure Node
           </span>
           <span className="text-sageMuted/80">v1.0.0</span>
         </div>

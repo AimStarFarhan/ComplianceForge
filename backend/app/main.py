@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
@@ -11,12 +12,14 @@ from pydantic import BaseModel
 
 from app.api import auth
 from app.api.routes_audit import router as audit_router
+from app.api.routes_chat import router as chat_router
 from app.api.routes_dashboard import router as dashboard_router
 from app.api.routes_devices import router as devices_router
 from app.api.routes_ingest import router as ingest_router
 from app.api.routes_report import router as report_router
 from app.api.routes_training import router as training_router
 from app.core.ai_classifier import get_classifier
+from app.core.security import SecurityMiddleware
 from app.db import init_db
 
 logging.basicConfig(level=logging.INFO)
@@ -26,7 +29,13 @@ logger = logging.getLogger("complianceforge")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
-    mode = "offline heuristic" if get_classifier().offline else "LLM"
+    clf = get_classifier()
+    if clf.local_lm_available():
+        mode = "LOCAL LM (air-gapped few-shot classification)"
+    elif not clf.offline:
+        mode = "cloud LLM"
+    else:
+        mode = "offline heuristic"
     logger.info("ComplianceForge up. AI classifier mode: %s", mode)
     yield
 
@@ -43,13 +52,22 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+_extra = os.environ.get("CF_ALLOWED_ORIGINS", "")
+if _extra:
+    _origins.extend(o.strip() for o in _extra.split(",") if o.strip())
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
+app.add_middleware(SecurityMiddleware)
 
 app.include_router(ingest_router)
 app.include_router(audit_router)
@@ -57,6 +75,7 @@ app.include_router(devices_router)
 app.include_router(training_router)
 app.include_router(report_router)
 app.include_router(dashboard_router)
+app.include_router(chat_router)
 
 
 class LoginBody(BaseModel):
@@ -74,8 +93,16 @@ def login(body: LoginBody):
 
 @app.get("/health")
 def health():
+    clf = get_classifier()
+    if clf.local_lm_available():
+        mode = "local_lm"
+    elif not clf.offline:
+        mode = "llm"
+    else:
+        mode = "offline_heuristic"
     return {
         "status": "ok",
-        "ai_mode": "offline_heuristic" if get_classifier().offline else "llm",
+        "ai_mode": mode,
+        "local_lm_url": "http://localhost:1234",
         "advisory_only": True,
     }

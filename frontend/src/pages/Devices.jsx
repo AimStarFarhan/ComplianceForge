@@ -20,7 +20,7 @@ export default function Devices() {
             <span className="font-sans text-xs text-taupe-muted block">{devices.length} devices in fleet inventory</span>
           </div>
         </div>
-        <Link to="/upload" className="btn-primary">
+        <Link to="/console/upload" className="btn-primary">
           <span className="material-symbols-outlined text-[16px]">add_circle</span>
           <span>Ingest Raw Config</span>
         </Link>
@@ -44,11 +44,11 @@ export default function Devices() {
             <tbody>
               {devices.map((d) => {
                 const pct = d.compliance_pct;
-                const color = pct === null || pct === undefined ? "#726F67" : pct >= 80 ? "#2D6A4F" : pct >= 50 ? "#C27803" : "#B84A39";
+                const color = pct === null || pct === undefined ? "var(--ink-soft)" : pct >= 80 ? "var(--pass)" : pct >= 50 ? "var(--warn)" : "var(--fail)";
                 return (
                   <tr key={d.device_id}>
                     <td>
-                      <Link to={`/devices/${encodeURIComponent(d.device_id)}`} className="font-display text-sm font-bold text-peatCharcoal hover:text-sprucePine">
+                      <Link to={`/console/devices/${encodeURIComponent(d.device_id)}`} className="font-display text-sm font-bold text-peatCharcoal hover:text-sprucePine">
                         {d.hostname || d.device_id}
                       </Link>
                       <div className="font-mono text-[10px] text-taupe-muted">{d.device_id}</div>
@@ -71,7 +71,7 @@ export default function Devices() {
                     <td className="font-mono text-[11px]">{d.unparsed_count || 0}</td>
                     <td className="font-mono text-[10px] text-taupe-muted">{timeAgo(d.last_audit)}</td>
                     <td>
-                      <Link to={`/devices/${encodeURIComponent(d.device_id)}`} className="btn-ghost !py-1 !px-2 !text-[10px]">OPEN →</Link>
+                      <Link to={`/console/devices/${encodeURIComponent(d.device_id)}`} className="btn-ghost !py-1 !px-2 !text-[10px]">OPEN →</Link>
                     </td>
                   </tr>
                 );

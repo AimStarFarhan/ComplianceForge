@@ -28,9 +28,9 @@ export default function Dashboard() {
                 <span
                   className="px-2.5 py-0.5 rounded font-mono text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5"
                   style={{
-                    background: (fleet ?? 0) >= 80 ? "#E8F2EC" : (fleet ?? 0) >= 50 ? "#FDF5E6" : "#FBECEB",
-                    color: (fleet ?? 0) >= 80 ? "#2D6A4F" : (fleet ?? 0) >= 50 ? "#C27803" : "#B84A39",
-                    border: `1px solid ${(fleet ?? 0) >= 80 ? "#2D6A4F55" : (fleet ?? 0) >= 50 ? "#C2780355" : "#B84A3955"}`,
+                    background: (fleet ?? 0) >= 80 ? "var(--pass-wash)" : (fleet ?? 0) >= 50 ? "var(--warn-wash)" : "var(--fail-wash)",
+                    color: (fleet ?? 0) >= 80 ? "var(--pass)" : (fleet ?? 0) >= 50 ? "var(--warn)" : "var(--fail)",
+                    border: `1px solid ${(fleet ?? 0) >= 80 ? "color-mix(in srgb, var(--pass) 33%, transparent)" : (fleet ?? 0) >= 50 ? "color-mix(in srgb, var(--warn) 33%, transparent)" : "color-mix(in srgb, var(--fail) 33%, transparent)"}`,
                   }}
                 >
                   <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "currentColor" }}></span>
@@ -54,7 +54,7 @@ export default function Dashboard() {
               <ScoreGauge pct={fleet} />
               <div className="flex flex-col">
                 <span className="font-mono text-[10px] uppercase tracking-wider text-taupe-muted">Fleet Compliance Index</span>
-                <span className="font-sans text-xs font-bold" style={{ color: (fleet ?? 0) >= 80 ? "#2D6A4F" : (fleet ?? 0) >= 50 ? "#C27803" : "#B84A39" }}>
+                <span className="font-sans text-xs font-bold" style={{ color: (fleet ?? 0) >= 80 ? "var(--pass)" : (fleet ?? 0) >= 50 ? "var(--warn)" : "var(--fail)" }}>
                   {fleet === null || fleet === undefined ? "Awaiting first audit" : `${fleet}% fleet average`}
                 </span>
                 <span className="font-mono text-[10px] text-taupe-muted">CIS-style packs: Cisco IOS / JunOS / SONiC</span>
@@ -88,7 +88,7 @@ export default function Dashboard() {
           icon="error"
           digit={String(sev.critical ?? 0).padStart(2, "0")}
           title="Critical findings across fleet"
-          accent="#B84A39"
+          accent="var(--fail)"
           progress={Math.min(100, (sev.critical ?? 0) * 20)}
         />
         <BentoCard
@@ -96,7 +96,7 @@ export default function Dashboard() {
           icon="warning"
           digit={String(sev.high ?? 0).padStart(2, "0")}
           title="High-severity hardening gaps"
-          accent="#C27803"
+          accent="var(--warn)"
           progress={Math.min(100, (sev.high ?? 0) * 15)}
         />
         <BentoCard
@@ -104,14 +104,14 @@ export default function Dashboard() {
           icon="router"
           digit={String(data.device_count).padStart(2, "0")}
           title={`${data.audited_count} audited · ${byVendor.length} vendor families`}
-          accent="#1E3527"
+          accent="var(--accent)"
         />
         <BentoCard
           label="Training Queue"
           icon="psychology"
           digit={String(devices.reduce((a, d) => a + (d.unparsed_count || 0), 0)).padStart(2, "0")}
           title="Unrecognized lines routed to human review"
-          accent="#2D6A4F"
+          accent="var(--pass)"
         />
       </div>
 
@@ -119,7 +119,7 @@ export default function Dashboard() {
       <section>
         <div className="label-md mb-2 flex items-center justify-between">
           <span>Fleet Devices — click to open audit</span>
-          <Link to="/upload" className="btn-primary !py-1.5">
+          <Link to="/console/upload" className="btn-primary !py-1.5">
             <span className="material-symbols-outlined text-[16px]">add_circle</span>
             <span>Ingest New Device</span>
           </Link>
@@ -135,7 +135,7 @@ export default function Dashboard() {
                 ? { label: "PARTIAL", cls: "status-error" }
                 : { label: "NON-COMPLIANT", cls: "status-fail" };
             return (
-              <Link key={d.device_id} to={`/devices/${encodeURIComponent(d.device_id)}`} className="card p-4 flex flex-col gap-3 hover:border-sprucePine transition-all">
+              <Link key={d.device_id} to={`/console/devices/${encodeURIComponent(d.device_id)}`} className="card p-4 flex flex-col gap-3 hover:border-sprucePine transition-all">
                 <div className="flex items-start justify-between">
                   <div>
                     <div className="font-display text-sm font-bold text-peatCharcoal">{d.hostname || d.device_id}</div>
@@ -145,7 +145,7 @@ export default function Dashboard() {
                 </div>
                 <div className="flex items-end justify-between">
                   <div>
-                    <div className="font-display text-2xl font-bold leading-none" style={{ color: d.compliance_pct >= 80 ? "#2D6A4F" : d.compliance_pct >= 50 ? "#C27803" : d.compliance_pct === null || d.compliance_pct === undefined ? "#726F67" : "#B84A39" }}>
+                    <div className="font-display text-2xl font-bold leading-none" style={{ color: d.compliance_pct >= 80 ? "var(--pass)" : d.compliance_pct >= 50 ? "var(--warn)" : d.compliance_pct === null || d.compliance_pct === undefined ? "var(--ink-soft)" : "var(--fail)" }}>
                       {d.compliance_pct ?? "—"}{d.compliance_pct != null && "%"}
                     </div>
                     <div className="font-mono text-[11px] text-taupe-muted mt-1">
@@ -181,12 +181,12 @@ export default function Dashboard() {
             <div key={v.vendor} className="p-3.5 rounded-lg bg-creamParchment border border-weatheredTaupe">
               <div className="flex items-center justify-between mb-1">
                 <span className="font-mono text-[10px] uppercase font-bold px-1.5 py-0.5 rounded border"
-                      style={{ color: "#2D6A4F", background: "#2D6A4F10", borderColor: "#2D6A4F30" }}>
+                      style={{ color: "var(--pass)", background: "color-mix(in srgb, var(--pass) 6%, transparent)", borderColor: "color-mix(in srgb, var(--pass) 19%, transparent)" }}>
                   {v.audited}/{v.devices} AUDITED
                 </span>
                 <span className="font-mono text-[11px] text-taupe-muted">{v.label}</span>
               </div>
-              <div className="font-display text-2xl font-bold mt-1" style={{ color: v.avg_compliance >= 80 ? "#2D6A4F" : v.avg_compliance >= 50 ? "#C27803" : "#B84A39" }}>
+              <div className="font-display text-2xl font-bold mt-1" style={{ color: v.avg_compliance >= 80 ? "var(--pass)" : v.avg_compliance >= 50 ? "var(--warn)" : "var(--fail)" }}>
                 {v.avg_compliance === null || v.avg_compliance === undefined ? "—" : `${v.avg_compliance}%`}
               </div>
               <div className="font-mono text-[10px] text-taupe-muted mt-0.5">avg compliance index</div>

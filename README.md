@@ -1,7 +1,6 @@
 # ComplianceForge
 
 **AI-augmented, vendor-agnostic network security compliance auditor.**
-Built for Smart India Hackathon 2026 — Problem Statement SIH26155 (NTRO) — Team Quantum Forgers.
 
 ComplianceForge ingests raw CLI configuration files from network devices (Cisco IOS, Juniper SRX, SONiC), normalizes them into a single vendor-neutral security baseline, audits them against CIS-style hardening rule packs, routes unrecognized commands into a **human-in-the-loop training loop**, and generates professional PDF compliance reports with severity-ranked findings and exact remediation CLI.
 

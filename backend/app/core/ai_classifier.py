@@ -25,6 +25,11 @@ except ImportError:  # httpx is optional at import time; routes may also use it
 
 DEFAULT_MODEL = "claude-3-5-haiku-latest"
 
+# Local LM (LM Studio / any OpenAI-compatible server). Tried FIRST so the
+# classifier works fully air-gapped; falls back to cloud/heuristic otherwise.
+LOCAL_LM_URL = os.environ.get("CF_LOCAL_LM_URL", "http://localhost:1234")
+LOCAL_LM_TIMEOUT = float(os.environ.get("CF_LOCAL_LM_TIMEOUT", "90"))
+
 FEWSHOT_EXAMPLES = """\
 Examples of CLI line -> security category pairs:
 - "ip telnet server" -> management_protocol
@@ -92,31 +97,94 @@ class AIClassifier:
         self.provider = "anthropic" if (os.environ.get("ANTHROPIC_API_KEY")) else ("openai" if os.environ.get("OPENAI_API_KEY") else ("anthropic" if self.api_key else "offline"))
         self.model = os.environ.get("CF_LLM_MODEL", model)
         self.offline = self.api_key is None
+        # Local LM is opt-in: heavy local models (e.g. gemma-4 reasoning) take
+        # ~30-60s per classification, fine for air-gapped batch runs, too slow
+        # for interactive use. Enable with CF_USE_LOCAL_LM=1.
+        self.use_local_lm = os.environ.get("CF_USE_LOCAL_LM", "0") == "1"
 
     # ------------------------------------------------------------------ public
     def classify(self, line: str) -> dict:
-        """Return {category, confidence, source, reason}."""
-        if self.offline or httpx is None:
-            category, confidence = heuristic_classify(line)
-            return {
-                "category": category,
-                "confidence": confidence,
-                "source": "heuristic_offline",
-                "reason": "Offline heuristic keyword match (no API key configured).",
-            }
+        """Return {category, confidence, source, reason}.
+
+        Fallback chain (first success wins, never raises):
+          1. local LM (LM Studio) — OPT-IN via CF_USE_LOCAL_LM=1 (air-gapped
+             mode; heavy local models can take ~30-60s/line)
+          2. cloud LLM (Anthropic/OpenAI) — if an API key is configured
+          3. deterministic keyword heuristic — instant, always works
+        """
+        # 1 — local LM, only when explicitly enabled (it's slow on most hardware)
+        if self.use_local_lm and httpx is not None:
+            try:
+                return self._classify_local_lm(line)
+            except Exception:
+                pass  # fall through to next layer
+
+        # 2 — cloud LLM
+        if not self.offline and httpx is not None:
+            try:
+                return self._classify_anthropic(line)
+            except Exception as exc:
+                category, confidence = heuristic_classify(line)
+                return {
+                    "category": category,
+                    "confidence": confidence,
+                    "source": "heuristic_offline",
+                    "reason": f"LLM call failed ({type(exc).__name__}); heuristic fallback used.",
+                }
+
+        # 3 — heuristic
+        category, confidence = heuristic_classify(line)
+        return {
+            "category": category,
+            "confidence": confidence,
+            "source": "heuristic_offline",
+            "reason": "Offline heuristic keyword match (no LM available).",
+        }
+
+    def local_lm_available(self) -> bool:
+        """True only if enabled AND the local LM server responds with a loaded model."""
+        if not self.use_local_lm or httpx is None:
+            return False
         try:
-            return self._classify_anthropic(line)
-        except Exception as exc:  # network/HTTP/quota — degrade gracefully
-            category, confidence = heuristic_classify(line)
-            return {
-                "category": category,
-                "confidence": confidence,
-                "source": "heuristic_offline",
-                "reason": f"LLM call failed ({type(exc).__name__}); heuristic fallback used.",
-            }
+            with httpx.Client(timeout=3) as client:
+                r = client.get(f"{LOCAL_LM_URL}/v1/models")
+                return r.status_code == 200 and bool(r.json().get("data"))
+        except Exception:
+            return False
 
     def classify_batch(self, lines: list[str]) -> list[dict]:
         return [self.classify(line) for line in lines]
+
+    # ---------------------------------------------------------------- local LM
+    def _classify_local_lm(self, line: str) -> dict:
+        """Few-shot classify via a local OpenAI-compatible server (LM Studio).
+        Raises on any failure — caller treats that as 'fall through to next layer'."""
+        prompt = (
+            f"{FEWSHOT_EXAMPLES}\n\n"
+            f'Classify this network device CLI line into exactly one category.\n'
+            f'Line: "{line}"\n\n'
+            f'Respond ONLY with JSON, no other text: '
+            f'{{"category": "<category>", "confidence": <0.0-1.0>, "reason": "<short>"}}'
+        )
+        payload = {
+            "model": os.environ.get("CF_LOCAL_LM_MODEL", "local-model"),
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.1,
+            # reasoning models (e.g. gemma-4) spend tokens on hidden thinking
+            # BEFORE the visible JSON answer — budget generously, then trim
+            "max_tokens": int(os.environ.get("CF_LOCAL_LM_MAX_TOKENS", "2048")),
+            "stream": False,
+        }
+        with httpx.Client(timeout=LOCAL_LM_TIMEOUT) as client:
+            resp = client.post(f"{LOCAL_LM_URL}/v1/chat/completions", json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+        msg = (data.get("choices") or [{}])[0].get("message", {})
+        # some servers put the answer in 'content', others in 'reasoning_content'
+        text = msg.get("content") or msg.get("reasoning_content") or ""
+        if not text:
+            raise ValueError("local LM returned empty content")
+        return self._parse_llm_json(text, "local_lm")
 
     # ---------------------------------------------------------------- anthropic
     def _classify_anthropic(self, line: str) -> dict:

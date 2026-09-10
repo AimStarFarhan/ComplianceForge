@@ -7,18 +7,34 @@ approve a mapping" — the answer is this named admin role.
 from __future__ import annotations
 
 import os
+import secrets
+import sys
 from datetime import datetime, timedelta, timezone
 
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-SECRET = os.environ.get("CF_JWT_SECRET", "complianceforge-dev-secret")
 ALGORITHM = "HS256"
 TOKEN_TTL_MINUTES = 12 * 60
 
 ADMIN_USER = "admin"
 ADMIN_PASSWORD = os.environ.get("CF_ADMIN_PASSWORD", "admin")
+
+
+def _jwt_secret() -> str:
+    """CF_JWT_SECRET wins; dev fallback only outside production, per worker-random
+    would break multi-worker auth, so in prod we REQUIRE it to be set."""
+    env = os.environ.get("CF_JWT_SECRET", "")
+    if env:
+        return env
+    if os.environ.get("CF_ENV", "dev").lower() in ("prod", "production"):
+        print("FATAL: CF_JWT_SECRET must be set in production", file=sys.stderr)
+        raise SystemExit(1)
+    return "complianceforge-dev-secret"  # single-process dev/demo only
+
+
+SECRET = _jwt_secret()
 
 _security = HTTPBearer(auto_error=False)
 

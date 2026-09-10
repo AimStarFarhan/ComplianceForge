@@ -2,7 +2,6 @@
 title ComplianceForge Launcher
 echo ====================================================
 echo   ComplianceForge - One Control Plane
-echo   SIH26155 (NTRO) - Quantum Forgers
 echo ====================================================
 echo.
 
