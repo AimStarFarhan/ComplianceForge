@@ -1,8 +1,11 @@
-"""SQLite + SQLAlchemy session setup. Zero-config for hackathon scale.
+"""Database session setup.
 
-Serverless note: on Vercel the filesystem is read-only except /tmp, so the
-DB lives there. It resets between cold starts (demo-acceptable); for
-persistence swap the engine for Postgres/Neon via CF_DATABASE_URL.
+Local dev: SQLite file (zero-config).
+Vercel/serverless: SQLite in /tmp is EPHEMERAL — the filesystem resets
+between cold starts and separate function instances do NOT share /tmp, so
+audit history disappears and dashboards vary per instance. For real
+persistence on Vercel, set CF_DATABASE_URL to a hosted Postgres (Neon free
+tier works); the engine switches automatically.
 """
 
 from __future__ import annotations
@@ -11,12 +14,23 @@ import os
 import tempfile
 
 from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
-def _db_path() -> str:
-    url = os.environ.get("CF_DATABASE_URL")
-    if url:
-        return url
+_POSTGRES_SCHEMES = ("postgres://", "postgresql://")
+
+
+def _normalize_postgres_url(url: str) -> str:
+    """Map any postgres:// URL onto SQLAlchemy's psycopg3 dialect."""
+    if url.startswith("postgresql+"):
+        return url  # already explicit
+    for scheme in _POSTGRES_SCHEMES:
+        if url.startswith(scheme):
+            return "postgresql+psycopg://" + url[len(scheme):]
+    return url
+
+
+def _sqlite_path() -> str:
     if os.environ.get("VERCEL") or os.environ.get("CF_SERVERLESS"):
         return os.path.join(tempfile.gettempdir(), "complianceforge.db")
     return os.environ.get(
@@ -25,13 +39,27 @@ def _db_path() -> str:
     )
 
 
-DB_PATH = _db_path()
+def _build_engine() -> Engine:
+    url = os.environ.get("CF_DATABASE_URL")
+    if url and url.startswith(_POSTGRES_SCHEMES):
+        # Neon/managed PG: connections are killed after a few minutes idle,
+        # so pre-ping + short recycle keeps serverless invocations healthy.
+        return create_engine(
+            _normalize_postgres_url(url),
+            pool_pre_ping=True,
+            pool_recycle=280,
+            echo=False,
+        )
+    if url:  # explicit sqlite:// URL
+        return create_engine(url, echo=False)
+    return create_engine(
+        f"sqlite:///{_sqlite_path()}",
+        connect_args={"check_same_thread": False},
+        echo=False,
+    )
 
-engine = create_engine(
-    f"sqlite:///{DB_PATH}",
-    connect_args={"check_same_thread": False},
-    echo=False,
-)
+
+engine = _build_engine()
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

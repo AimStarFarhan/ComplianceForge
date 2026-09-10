@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 
-// Local dev: Vite proxies /api -> 127.0.0.1:8000. On Vercel: same-origin /api.
-// Fallback to direct backend URL for any other setup.
-export const API = import.meta.env.VITE_API_BASE ?? (import.meta.env.DEV ? "" : "/api");
+// Local dev: Vite proxies /api/* -> 127.0.0.1:8000 (strips the prefix).
+// Production (Vercel): same-origin /api routes to the backend service.
+// VITE_API_BASE overrides for any custom setup (e.g. "http://127.0.0.1:8000").
+const BASE = import.meta.env.VITE_API_BASE || "/api";
+export const API = BASE;
 
 const TOKEN_KEY = "cf-token";
 
