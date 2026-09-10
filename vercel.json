@@ -3,7 +3,13 @@
   "services": {
     "frontend": {
       "root": "frontend/",
-      "framework": "vite"
+      "framework": "vite",
+      "routes": [
+        { "src": "/assets/(.*)", "dest": "/assets/$1" },
+        { "src": "/favicon.svg", "dest": "/favicon.svg" },
+        { "src": "/logo.png", "dest": "/logo.png" },
+        { "src": "/(.*)", "dest": "/index.html" }
+      ]
     },
     "backend": {
       "root": "backend/",
