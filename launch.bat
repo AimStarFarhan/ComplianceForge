@@ -23,9 +23,15 @@ if not exist "%~dp0frontend\node_modules" (
 )
 
 REM ---- 3. Start backend (FastAPI on :8000) ----
-REM AI modes: default = deterministic classifier (LLM-ready, works offline).
-REM   Neural mode (air-gapped):  set CF_USE_LOCAL_LM=1  (needs LM Studio on :1234)
-REM   Neural mode (cloud):       set ANTHROPIC_API_KEY=...  (or OPENAI_API_KEY=...)
+REM AI modes: local LM Studio models (air-gapped, no API key needed).
+REM   Classifier -> fast 1.2B model (per-pattern calls must stay snappy).
+REM   Report analyst (chat) -> larger reasoning model (quality matters).
+REM   If LM Studio is down, the backend degrades gracefully to the
+REM   deterministic classifier — so these are safe to leave on.
+set CF_USE_LOCAL_LM=1
+set CF_LOCAL_LM_CLASSIFY_MODEL=liquid/lfm2.5-1.2b
+set CF_LOCAL_LM_ANALYST_MODEL=google/gemma-4-e4b
+REM   Neural mode (cloud) alternative: set ANTHROPIC_API_KEY=... (or OPENAI_API_KEY=...)
 echo [3/4] Starting backend  -^> http://127.0.0.1:8000
 start "ComplianceForge API" cmd /k "cd /d ""%~dp0backend"" && python -m uvicorn app.main:app --port 8000"
 

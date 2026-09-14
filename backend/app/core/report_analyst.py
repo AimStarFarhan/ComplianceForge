@@ -26,6 +26,20 @@ except ImportError:
 LOCAL_LM_URL = os.environ.get("CF_LOCAL_LM_URL", "http://localhost:1234")
 LOCAL_LM_TIMEOUT = float(os.environ.get("CF_LOCAL_LM_TIMEOUT", "90"))
 
+
+def _local_lm_model() -> str:
+    """Which loaded model answers report-analyst (chat) calls.
+
+    The analyst writes grounded explanations — quality matters more than
+    speed — so it defaults to the larger reasoning model. Override with
+    CF_LOCAL_LM_ANALYST_MODEL (exact LM Studio identifier); falls back to
+    the shared CF_LOCAL_LM_MODEL for single-model setups.
+    """
+    return os.environ.get(
+        "CF_LOCAL_LM_ANALYST_MODEL",
+        os.environ.get("CF_LOCAL_LM_MODEL", "local-model"),
+    )
+
 MAX_FINDINGS_IN_CONTEXT = 40
 
 ANALYST_SYSTEM = """You are the ComplianceForge report analyst — a network security compliance assistant.
@@ -202,7 +216,7 @@ def _llm_answer(question: str, context: str) -> str:
     # 1 — local LM Studio (air-gapped)
     if os.environ.get("CF_USE_LOCAL_LM", "0") == "1":
         payload = {
-            "model": os.environ.get("CF_LOCAL_LM_MODEL", "local-model"),
+            "model": _local_lm_model(),
             "messages": [
                 {"role": "system", "content": ANALYST_SYSTEM},
                 {"role": "user", "content": prompt},

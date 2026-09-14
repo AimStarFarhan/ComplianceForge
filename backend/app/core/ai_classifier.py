@@ -30,6 +30,20 @@ DEFAULT_MODEL = "claude-3-5-haiku-latest"
 LOCAL_LM_URL = os.environ.get("CF_LOCAL_LM_URL", "http://localhost:1234")
 LOCAL_LM_TIMEOUT = float(os.environ.get("CF_LOCAL_LM_TIMEOUT", "90"))
 
+
+def _local_lm_model() -> str:
+    """Which loaded model answers classification calls.
+
+    Per-purpose routing: the classifier fires once per *pattern* and must be
+    fast, so it defaults to the small model. Override with
+    CF_LOCAL_LM_CLASSIFY_MODEL (exact LM Studio identifier); falls back to
+    the shared CF_LOCAL_LM_MODEL for single-model setups.
+    """
+    return os.environ.get(
+        "CF_LOCAL_LM_CLASSIFY_MODEL",
+        os.environ.get("CF_LOCAL_LM_MODEL", "local-model"),
+    )
+
 FEWSHOT_EXAMPLES = """\
 Examples of CLI line -> security category pairs:
 - "ip telnet server" -> management_protocol
@@ -167,7 +181,7 @@ class AIClassifier:
             f'{{"category": "<category>", "confidence": <0.0-1.0>, "reason": "<short>"}}'
         )
         payload = {
-            "model": os.environ.get("CF_LOCAL_LM_MODEL", "local-model"),
+            "model": _local_lm_model(),
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.1,
             # reasoning models (e.g. gemma-4) spend tokens on hidden thinking
