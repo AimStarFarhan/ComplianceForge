@@ -7,6 +7,7 @@ import { ThemeToggle } from "./ThemeToggle";
 export default function Header() {
   const { data } = useApi("/dashboard");
   const { data: queue } = useApi("/training/stats");
+  const { data: health } = useApi("/health");
   const location = useLocation();
 
   const fleet = data?.fleet_compliance_score;
@@ -39,17 +40,29 @@ export default function Header() {
           </div>
         </Link>
 
-        {/* Framework pills */}
+        {/* Framework pills + AI mode */}
         <div className="hidden xl:flex items-center gap-1.5 bg-olivePanel px-2.5 py-1 rounded-md border border-camoSeam">
           <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-sprucePine border border-mutedMeadow/50 text-[#FCF9F0] font-mono text-[11px] font-medium">
             <span className="w-1.5 h-1.5 rounded-full bg-mutedMeadow animate-pulse"></span>
-            <span>CIS-Style Pack v1</span>
+            <span>CIS · NIST · STIG · ISO views</span>
           </div>
-          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded text-sageMuted font-mono text-[11px]">
-            <span>NIST SP 800-53</span>
-          </div>
-          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded text-sageMuted font-mono text-[11px]">
-            <span>DISA STIG</span>
+          <div
+            className="flex items-center gap-1.5 px-2 py-0.5 rounded text-sageMuted font-mono text-[11px]"
+            title={health?.ai_label || "AI classifier mode"}
+          >
+            <span
+              className="w-1.5 h-1.5 rounded-full animate-pulse"
+              style={{ background: health?.ai_mode === "deterministic" ? "var(--warn)" : "var(--pass)" }}
+            ></span>
+            <span>
+              {health?.ai_mode === "local_lm"
+                ? "AI: Local LM"
+                : health?.ai_mode === "llm"
+                  ? "AI: Cloud LLM"
+                  : health?.ai_mode === "deterministic"
+                    ? "Deterministic · LLM-ready"
+                    : "AI: …"}
+            </span>
           </div>
         </div>
 

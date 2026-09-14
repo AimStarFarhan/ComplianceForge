@@ -6,6 +6,13 @@ import { useToast, copyText } from "../components/Toast";
 
 const order = { critical: 0, high: 1, medium: 2, low: 3 };
 
+const FRAMEWORKS = [
+  ["cis", "CIS Benchmarks"],
+  ["nist", "NIST SP 800-53"],
+  ["stig", "DISA STIGs"],
+  ["iso", "ISO/IEC 27001"],
+];
+
 function RemediationCard({ f, toast }) {
   const sevColor = f.severity === "high" || f.severity === "critical" ? "var(--fail)" : "var(--warn)";
   return (
@@ -20,7 +27,10 @@ function RemediationCard({ f, toast }) {
               <span className="font-display text-sm font-bold text-peatCharcoal">{f.rule_id} — {f.title}</span>
             </div>
             <span className="font-mono text-xs text-taupe-muted mt-1">
-              Maps to: {f.maps_to || "—"}
+              {f.framework_ref || f.maps_to || "—"}
+              {f.framework_ref && f.maps_to && (
+                <span className="block text-[10px] opacity-75">Native: {f.maps_to}</span>
+              )}
               {f.source === "ai_suggested_human_confirmed" && (
                 <span className="ml-2 px-1.5 py-0.5 rounded bg-sprucePine text-[#FCF9F0] font-bold text-[10px]">AI + HUMAN-CONFIRMED SOURCE</span>
               )}
@@ -64,7 +74,8 @@ function RemediationCard({ f, toast }) {
 
 export default function DeviceDetail() {
   const { deviceId } = useParams();
-  const { data, error, loading, reload } = useApi(`/devices/${encodeURIComponent(deviceId)}`, [deviceId]);
+  const [framework, setFramework] = useState("cis");
+  const { data, error, loading, reload } = useApi(`/devices/${encodeURIComponent(deviceId)}?framework=${framework}`, [deviceId, framework]);
   const [auditing, setAuditing] = useState(false);
   const [training, setTraining] = useState(false);
   const [tab, setTab] = useState("json");
@@ -89,7 +100,7 @@ export default function DeviceDetail() {
   const runAudit = async () => {
     setAuditing(true);
     try {
-      const res = await api(`/audit/${encodeURIComponent(deviceId)}`, { method: "POST" });
+      const res = await api(`/audit/${encodeURIComponent(deviceId)}?framework=${framework}`, { method: "POST" });
       toast(`Audit complete — ${res.summary.pass_count} pass / ${res.summary.fail_count} fail / ${res.unparsed_count} to training queue`);
       window.dispatchEvent(
         new CustomEvent("cf:audited", { detail: { deviceId, summary: res.summary } })
@@ -195,11 +206,24 @@ export default function DeviceDetail() {
                 </div>
               </div>
               <div className="flex flex-col">
-                <span className="font-mono text-[10px] uppercase tracking-wider text-taupe-muted">CIS-Style Compliance Index</span>
+                <span className="font-mono text-[10px] uppercase tracking-wider text-taupe-muted">{data?.framework_label || "CIS-Style"} Compliance Index</span>
                 <span className="font-sans text-xs font-bold" style={{ color: s ? ((s.compliance_pct ?? 0) >= 80 ? "var(--pass)" : "var(--warn)") : "var(--ink-soft)" }}>
                   {s ? `${s.pass_count} of ${s.total_rules} checks pass` : "Run first audit"}
                 </span>
-                <span className="font-mono text-[10px] text-taupe-muted">{data.vendor_label} rule pack</span>
+                <span className="font-mono text-[10px] text-taupe-muted mt-1 flex items-center gap-1.5">
+                  <span>Framework:</span>
+                  <select
+                    className="input-field !w-auto !py-0.5 !px-1.5 text-[11px] font-mono"
+                    value={framework}
+                    onChange={(e) => setFramework(e.target.value)}
+                    title="User-selected benchmark — one rule pack, four illustrative control-family views"
+                  >
+                    {FRAMEWORKS.map(([v, l]) => (
+                      <option key={v} value={v}>{l}</option>
+                    ))}
+                  </select>
+                </span>
+                <span className="font-mono text-[10px] text-taupe-muted">{data.vendor_label} rule pack · illustrative crosswalk</span>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -268,10 +292,10 @@ export default function DeviceDetail() {
             <span className="label-xs">Active Standard</span>
             <span className="material-symbols-outlined text-sprucePine text-[20px]">fact_check</span>
           </div>
-          <div className="my-2">
-            <div className="font-display text-lg font-bold text-peatCharcoal">CIS-Style Pack</div>
-            <div className="font-mono text-xs text-taupe-muted mt-0.5">Profile: {data.vendor_label}</div>
-          </div>
+            <div className="my-2">
+              <div className="font-display text-lg font-bold text-peatCharcoal">{data?.framework_label || "CIS Benchmarks"}</div>
+              <div className="font-mono text-xs text-taupe-muted mt-0.5">Profile: {data.vendor_label} · illustrative crosswalk</div>
+            </div>
           <div className="flex items-center justify-between font-mono text-[11px] font-semibold text-mutedMeadow">
             <span>{s ? `${s.pass_count} of ${s.total_rules} checks valid` : "—"}</span>
             <span className="bg-mutedMeadow/15 px-1.5 py-0.5 rounded">{s ? `${s.compliance_pct}% PASS` : "—"}</span>

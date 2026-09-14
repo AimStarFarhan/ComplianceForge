@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 
 from app.api.auth import verify_token
 from app.core.ai_classifier import get_classifier
-from app.core.rule_cache import RuleCache
+from app.core.rule_cache import RuleCache, normalize_pattern
 from app.core.schema import SECURITY_CATEGORIES
 from app.db import get_db
 from app.models import ConfigSnapshot, Device
@@ -55,9 +55,17 @@ class TrainDeviceRequest(BaseModel):
 
 @router.get("/queue", dependencies=[Depends(verify_token)])
 def training_queue(db: Session = Depends(get_db)):
-    """Unparsed lines from all latest snapshots, minus already-matched ones."""
+    """Unparsed lines from all latest snapshots, minus already-matched ones.
+
+    Returns both the flat `queue` (backward-compat, one entry per unique raw
+    line) and `clusters` — lines grouped by normalized pattern so the UI can
+    offer one-click "confirm N lines" pattern recognition. The classifier is
+    invoked once per *pattern*, not once per line.
+    """
     cache = RuleCache(db)
-    queue: list[dict] = []
+    # 1 — collect pending raw lines (skip cache-covered), dedupe identical lines
+    pending: list[dict] = []
+    seen_raw: set[str] = set()
     devices = list(db.scalars(select(Device)).all())
     for device in devices:
         snap = db.scalar(
@@ -70,46 +78,93 @@ def training_queue(db: Session = Depends(get_db)):
         normalized = _load_normalized(snap)
         for ul in normalized.get("unparsed_lines", []):
             text = ul.get("text", "")
-            if not text:
+            if not text or text in seen_raw:
                 continue
-            # SKIP anything the cache already covers (exact or fuzzy) —
+            seen_raw.add(text)
+            # SKIP anything the cache already covers (exact) —
             # that line is already "learned" and must not re-ask a human.
             hit = cache.match(text, vendor_hint=device.vendor)
             if hit and hit.get("confidence", 0) >= 1.0:
                 continue
-            # propose an AI classification for everything still pending
+            pending.append(
+                {
+                    "device_id": device.device_id,
+                    "vendor": device.vendor,
+                    "line_number": ul.get("line_number", 0),
+                    "raw_line": text,
+                    "suggested_category": ul.get("suggested_category"),
+                    "suggested_confidence": ul.get("suggested_confidence"),
+                    "cache_hit": hit,
+                }
+            )
+    # 2 — group by normalized pattern (pattern recognition), classify once each
+    by_pattern: dict[str, list[dict]] = {}
+    for p in pending:
+        by_pattern.setdefault(normalize_pattern(p["raw_line"]), []).append(p)
+    classifier = get_classifier()
+    queue: list[dict] = []
+    clusters: list[dict] = []
+    for pattern, members in by_pattern.items():
+        rep = members[0]
+        if rep["suggested_category"]:
+            category, confidence, source = (
+                rep["suggested_category"],
+                rep["suggested_confidence"],
+                "ingest_suggestion",
+            )
+        elif rep["cache_hit"]:
+            # fuzzy/similarity proposal — still needs human confirmation
+            category = rep["cache_hit"]["category"]
+            confidence = rep["cache_hit"]["confidence"]
+            source = rep["cache_hit"].get("match_type", "similarity")
+        else:
+            proposal = classifier.classify(rep["raw_line"])
+            category, confidence, source = (
+                proposal["category"],
+                proposal["confidence"],
+                proposal["source"],
+            )
+        for m in members:
             entry = {
-                "device_id": device.device_id,
-                "vendor": device.vendor,
-                "line_number": ul.get("line_number", 0),
-                "raw_line": text,
-                "ai_category": None,
-                "ai_confidence": None,
+                "device_id": m["device_id"],
+                "vendor": m["vendor"],
+                "line_number": m["line_number"],
+                "raw_line": m["raw_line"],
+                "pattern": pattern,
+                "ai_category": category,
+                "ai_confidence": confidence,
+                "ai_source": source,
             }
-            if ul.get("suggested_category"):
-                entry["ai_category"] = ul["suggested_category"]
-                entry["ai_confidence"] = ul.get("suggested_confidence")
-            elif hit:
-                # fuzzy/similarity proposal — still needs human confirmation
-                entry["ai_category"] = hit["category"]
-                entry["ai_confidence"] = hit["confidence"]
-                entry["match_type"] = hit["match_type"]
-            else:
-                proposal = get_classifier().classify(text)
-                entry["ai_category"] = proposal["category"]
-                entry["ai_confidence"] = proposal["confidence"]
-                entry["ai_source"] = proposal["source"]
+            if m["cache_hit"] and not m["suggested_category"]:
+                entry["match_type"] = m["cache_hit"].get("match_type")
             queue.append(entry)
-    # dedupe identical raw lines across devices
-    seen: set[str] = set()
-    deduped = []
-    for e in queue:
-        key = e["raw_line"]
-        if key in seen:
-            continue
-        seen.add(key)
-        deduped.append(e)
-    return {"queue": deduped, "count": len(deduped)}
+        clusters.append(
+            {
+                "pattern": pattern,
+                "count": len(members),
+                "ai_category": category,
+                "ai_confidence": confidence,
+                "ai_source": source,
+                "vendor": rep["vendor"],
+                "representative_line": rep["raw_line"],
+                "examples": [
+                    {
+                        "raw_line": m["raw_line"],
+                        "device_id": m["device_id"],
+                        "line_number": m["line_number"],
+                    }
+                    for m in members[:5]
+                ],
+                "device_ids": sorted({m["device_id"] for m in members}),
+            }
+        )
+    clusters.sort(key=lambda c: (-c["count"], c["pattern"]))
+    return {
+        "queue": queue,
+        "count": len(queue),
+        "clusters": clusters,
+        "cluster_count": len(clusters),
+    }
 
 
 @router.post("/classify", dependencies=[Depends(verify_token)])

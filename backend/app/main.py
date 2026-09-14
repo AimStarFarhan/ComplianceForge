@@ -119,13 +119,19 @@ def health():
     clf = get_classifier()
     if clf.local_lm_available():
         mode = "local_lm"
+        label = "AI online — Local LM (air-gapped classification)"
     elif not clf.offline:
         mode = "llm"
+        label = "AI online — Cloud LLM classification"
     else:
-        mode = "offline_heuristic"
+        mode = "deterministic"
+        label = "Deterministic classifier — LLM-ready (set ANTHROPIC_API_KEY/OPENAI_API_KEY or CF_USE_LOCAL_LM=1 for neural mode)"
     return {
         "status": "ok",
         "ai_mode": mode,
+        "ai_label": label,
+        # legacy alias: older UIs/tests read "offline_heuristic"
+        "ai_mode_legacy": "offline_heuristic" if mode == "deterministic" else mode,
         "local_lm_url": "http://localhost:1234",
         "advisory_only": True,
     }

@@ -1,7 +1,7 @@
 import { ToastProvider } from "./components/Toast";
 import { ThemeProvider } from "./components/ThemeToggle";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { ensureLogin } from "./lib/api";
 import ConsoleLayout from "./components/ConsoleLayout";
 import Dashboard from "./pages/Dashboard";
@@ -14,9 +14,27 @@ import TrainingLoop from "./pages/TrainingLoop";
 import UploadIngest from "./pages/UploadIngest";
 
 export default function App() {
+  const [booted, setBooted] = useState(false);
+
   useEffect(() => {
-    ensureLogin().catch(() => {});
+    ensureLogin()
+      .catch(() => {})
+      .finally(() => setBooted(true));
   }, []);
+
+  if (!booted) {
+    return (
+      <ThemeProvider>
+        <ToastProvider>
+          <BrowserRouter>
+            <div className="min-h-screen flex items-center justify-center bg-tacticalOlive">
+              <div className="font-mono text-sprucePine">Initializing…</div>
+            </div>
+          </BrowserRouter>
+        </ToastProvider>
+      </ThemeProvider>
+    );
+  }
 
   return (
     <ThemeProvider>

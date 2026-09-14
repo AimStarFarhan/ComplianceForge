@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 
 from app.api.auth import verify_token
 from app.core.baseline_inference import infer_baseline
+from app.core.frameworks import annotate_findings, framework_summary, normalize_framework
 from app.core.parsers import get_parser
 from app.core.parsers.base_parser import VENDOR_UNSEEN
 from app.core.rule_cache import RuleCache
@@ -30,7 +31,8 @@ router = APIRouter(prefix="/audit", tags=["audit"])
 
 
 @router.post("/{device_id}", dependencies=[Depends(verify_token)])
-def audit_device(device_id: str, db: Session = Depends(get_db)):
+def audit_device(device_id: str, framework: str = "cis", db: Session = Depends(get_db)):
+    fw = normalize_framework(framework)
     device = db.scalar(select(Device).where(Device.device_id == device_id))
     if device is None:
         raise HTTPException(404, f"Device '{device_id}' not found — ingest a config first")
@@ -93,8 +95,10 @@ def audit_device(device_id: str, db: Session = Depends(get_db)):
         "run_id": run.id,
         "device_id": device.device_id,
         "vendor": device.vendor,
+        "framework": fw,
         "summary": summary,
-        "findings": results,
+        "framework_summary": framework_summary(results, fw),
+        "findings": annotate_findings(results, fw),
         "unparsed_count": len(baseline.unparsed_lines),
         "unparsed_lines": [ul.model_dump() for ul in baseline.unparsed_lines],
     }

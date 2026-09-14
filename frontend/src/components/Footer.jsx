@@ -5,10 +5,10 @@ export default function Footer() {
   const online = data?.status === "ok";
   const aiMode =
     data?.ai_mode === "local_lm"
-      ? "Online — Local LM (air-gapped)"
+      ? "Local LM (air-gapped)"
       : data?.ai_mode === "llm"
-      ? "Online — Cloud LLM"
-      : "Online — Offline Heuristic";
+      ? "Cloud LLM"
+      : "Deterministic · LLM-ready";
 
   return (
     <footer className="fixed bottom-0 left-64 right-0 h-10 bg-tacticalOlive border-t border-camoSeam z-30 flex items-center justify-between px-6 text-softSage font-mono text-xs">

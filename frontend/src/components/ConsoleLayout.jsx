@@ -1,11 +1,18 @@
+import { useEffect } from "react";
+import { Navigate, Outlet } from "react-router-dom";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 import Footer from "./Footer";
 import ChatBot from "./ChatBot";
-import { Outlet } from "react-router-dom";
+import { getToken } from "../lib/api";
 
 /** The embedded ComplianceForge console — mounted under /console/* behind the landing page. */
 export default function ConsoleLayout() {
+  const token = getToken();
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+
   return (
     <div className="min-h-screen bg-rawPutty text-peatCharcoal">
       <Header />

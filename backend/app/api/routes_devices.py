@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.auth import verify_token
+from app.core.frameworks import FRAMEWORKS, annotate_findings, framework_summary, normalize_framework
 from app.core.parsers.base_parser import VENDOR_LABELS
 from app.db import get_db
 from app.models import AuditRun, ConfigSnapshot, Device, Finding
@@ -43,8 +44,20 @@ def list_devices(db: Session = Depends(get_db)):
     return {"devices": out}
 
 
+@router.get("/frameworks/list", dependencies=[Depends(verify_token)])
+def list_frameworks():
+    """User-selectable compliance benchmarks (PS: CIS / NIST / STIG / ISO)."""
+    return {
+        "frameworks": [
+            {"id": fid, **meta} for fid, meta in FRAMEWORKS.items()
+        ],
+        "note": "Illustrative crosswalk: one CIS-style rule pack presented through each framework's control families.",
+    }
+
+
 @router.get("/{device_id}", dependencies=[Depends(verify_token)])
-def device_detail(device_id: str, db: Session = Depends(get_db)):
+def device_detail(device_id: str, framework: str = "cis", db: Session = Depends(get_db)):
+    fw = normalize_framework(framework)
     device = db.scalar(select(Device).where(Device.device_id == device_id))
     if device is None:
         raise HTTPException(404, f"Device '{device_id}' not found")
@@ -97,6 +110,22 @@ def device_detail(device_id: str, db: Session = Depends(get_db)):
         for r in history_runs
     ]
 
+    findings_raw = [
+        {
+            "rule_id": f.rule_id,
+            "title": f.rule_title,
+            "severity": f.severity,
+            "status": f.status,
+            "evidence": f.evidence,
+            "maps_to": f.maps_to,
+            "explanation": f.explanation,
+            "remediation": f.remediation,
+            "source": f.source,
+            "category": f.category,
+        }
+        for f in findings
+    ]
+
     return {
         "device_id": device.device_id,
         "vendor": device.vendor,
@@ -104,21 +133,11 @@ def device_detail(device_id: str, db: Session = Depends(get_db)):
         "hostname": device.hostname,
         "os_version": device.os_version,
         "model": device.model,
+        "framework": fw,
+        "framework_label": FRAMEWORKS[fw]["label"],
         "summary": json.loads(run.summary_json or "{}"),
-        "findings": [
-            {
-                "rule_id": f.rule_id,
-                "title": f.rule_title,
-                "severity": f.severity,
-                "status": f.status,
-                "evidence": f.evidence,
-                "maps_to": f.maps_to,
-                "explanation": f.explanation,
-                "remediation": f.remediation,
-                "source": f.source,
-            }
-            for f in findings
-        ],
+        "framework_summary": framework_summary(findings_raw, fw),
+        "findings": annotate_findings(findings_raw, fw),
         "raw_config": raw_config,
         "normalized": normalized,
         "history": history,

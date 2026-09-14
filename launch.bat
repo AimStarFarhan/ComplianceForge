@@ -23,6 +23,9 @@ if not exist "%~dp0frontend\node_modules" (
 )
 
 REM ---- 3. Start backend (FastAPI on :8000) ----
+REM AI modes: default = deterministic classifier (LLM-ready, works offline).
+REM   Neural mode (air-gapped):  set CF_USE_LOCAL_LM=1  (needs LM Studio on :1234)
+REM   Neural mode (cloud):       set ANTHROPIC_API_KEY=...  (or OPENAI_API_KEY=...)
 echo [3/4] Starting backend  -^> http://127.0.0.1:8000
 start "ComplianceForge API" cmd /k "cd /d ""%~dp0backend"" && python -m uvicorn app.main:app --port 8000"
 

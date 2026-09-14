@@ -9,6 +9,58 @@ const CATEGORIES = [
   "routing_integrity", "interface_security", "zone_policy", "unknown",
 ];
 
+function ClusterCard({ cluster, onConfirmCluster, busy }) {
+  const [selected, setSelected] = useState(cluster.ai_category || "unknown");
+  const low = cluster.ai_confidence != null && cluster.ai_confidence < 0.7;
+
+  return (
+    <div className="card p-4 border-l-4 border-l-mutedMeadow">
+      <div className="flex items-start justify-between gap-3 mb-2">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <code className="font-mono text-xs px-2 py-1 rounded bg-creamParchment border border-weatheredTaupe text-peatCharcoal inline-block">
+              {cluster.pattern}
+            </code>
+            <span className="px-2 py-0.5 rounded bg-sprucePine text-[#FCF9F0] font-mono text-[10px] font-bold uppercase">
+              ×{cluster.count} line{cluster.count === 1 ? "" : "s"} — 1 confirm covers all
+            </span>
+          </div>
+          <div className="font-mono text-[10px] mt-1.5 text-taupe-muted">
+            pattern recognition: values templated out · devices: {(cluster.device_ids || []).join(", ") || "—"}
+          </div>
+          <details className="mt-1.5">
+            <summary className="font-mono text-[10px] uppercase tracking-wider text-sprucePine cursor-pointer font-bold">
+              Show {Math.min(cluster.examples?.length || 0, 5)} example line{(cluster.examples?.length || 0) === 1 ? "" : "s"}
+            </summary>
+            <pre className="mt-1.5 max-h-32 overflow-auto font-mono text-[11px] leading-relaxed bg-creamParchment border border-weatheredTaupe rounded p-2">
+              {(cluster.examples || []).map((e) => `${e.device_id}:L${e.line_number}: ${e.raw_line}`).join("\n")}
+              {(cluster.count || 0) > (cluster.examples || []).length ? `\n…${cluster.count - cluster.examples.length} more` : ""}
+            </pre>
+          </details>
+        </div>
+        <div className="text-right shrink-0">
+          <div className="label-xs">AI Proposal</div>
+          <div className="font-mono text-xs mt-0.5 font-bold" style={{ color: low ? "var(--warn)" : "var(--pass)" }}>
+            {cluster.ai_category || "—"} {cluster.ai_confidence != null && `(${Math.round(cluster.ai_confidence * 100)}%)`}
+          </div>
+          <div className="font-mono text-[9px] text-taupe-muted mt-0.5">{cluster.ai_source || ""}</div>
+        </div>
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <select className="input-field !w-64 !py-1.5 text-xs font-mono" value={selected} onChange={(e) => setSelected(e.target.value)}>
+          {CATEGORIES.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+        <button disabled={busy} onClick={() => onConfirmCluster(cluster, selected)} className="btn-primary !py-1.5">
+          <span className="material-symbols-outlined text-[15px]">done_all</span>
+          <span>Confirm pattern (×{cluster.count})</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function QueueCard({ entry, onConfirm, onReject, busy }) {
   const [selected, setSelected] = useState(entry.ai_category || "unknown");
   const low = entry.ai_confidence != null && entry.ai_confidence < 0.7;
@@ -86,6 +138,31 @@ export default function TrainingLoop() {
 
   const reject = (entry) => toast(`Rejected "${entry.raw_line.slice(0, 40)}" — stays queued for a future reviewer.`);
 
+  const confirmCluster = async (cluster, category) => {
+    setBusy(true);
+    try {
+      const res = await api("/training/confirm", {
+        method: "POST",
+        body: {
+          example_line: cluster.representative_line,
+          category,
+          confirmed_by: "admin",
+          ai_suggested: Boolean(cluster.ai_category) && cluster.ai_category === category,
+          ai_confidence: cluster.ai_confidence ?? null,
+          vendor_hint: cluster.vendor || "any",
+          notes: `bulk pattern confirm ×${cluster.count}`,
+        },
+      });
+      toast(`Pattern confirmed: "${cluster.pattern}" → ${res.mapping.category}. ${cluster.count} line(s) now auto-match.`);
+      reloadQueue();
+      reloadMappings();
+    } catch (e) {
+      toast(`Confirm failed: ${e.message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const deleteMapping = async (id) => {
     setBusy(true);
     try {
@@ -139,9 +216,30 @@ export default function TrainingLoop() {
         </div>
       </div>
 
+      {/* Pattern clusters — one confirm covers N lines */}
+      <section className="space-y-3">
+        <div className="label-md flex items-center justify-between">
+          <span>Pattern Clusters — one confirm covers every matching line</span>
+          {(queueData?.cluster_count ?? 0) > 0 && (
+            <span className="font-mono text-[10px] text-taupe-muted">
+              {queueData.cluster_count} pattern{(queueData.cluster_count || 0) === 1 ? "" : "s"} from {queueData.count} line{(queueData.count || 0) === 1 ? "" : "s"}
+            </span>
+          )}
+        </div>
+        {loading && <div className="font-mono text-xs text-taupe-muted">Clustering patterns…</div>}
+        {(queueData?.clusters || []).map((cluster) => (
+          <ClusterCard key={cluster.pattern} cluster={cluster} onConfirmCluster={confirmCluster} busy={busy} />
+        ))}
+        {queueData?.cluster_count === 0 && !loading && (
+          <div className="card p-6 font-mono text-xs text-taupe-muted text-center">
+            No patterns pending — every line in every ingested config is classified. Ingest an unseen-vendor config to see the loop fire.
+          </div>
+        )}
+      </section>
+
       {/* Queue */}
       <section className="space-y-3">
-        <div className="label-md">Unrecognized Lines Awaiting Review</div>
+        <div className="label-md">Unrecognized Lines Awaiting Review (flat view)</div>
         {loading && <div className="font-mono text-xs text-taupe-muted">Loading queue…</div>}
         {(queueData?.queue || []).map((entry, i) => (
           <QueueCard key={`${entry.device_id}-${entry.line_number}-${i}`} entry={entry} onConfirm={confirm} onReject={reject} busy={busy} />

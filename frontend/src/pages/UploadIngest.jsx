@@ -11,35 +11,59 @@ const VENDOR_HINTS = [
 ];
 
 export default function UploadIngest() {
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
   const [deviceId, setDeviceId] = useState("");
   const [vendor, setVendor] = useState("auto");
   const [result, setResult] = useState(null);
+  const [bulkResults, setBulkResults] = useState([]);
   const [busy, setBusy] = useState(false);
   const [trainMsg, setTrainMsg] = useState("");
   const toast = useToast();
 
+  const ingestOne = async (file, idx, total) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    // single-file mode may carry an explicit device id; bulk defaults to hostname/filename
+    if (deviceId && total === 1) fd.append("device_id", deviceId);
+    if (vendor !== "auto") fd.append("vendor", vendor);
+    return api("/ingest", { method: "POST", files: fd });
+  };
+
   const ingest = async () => {
-    if (!file) return;
+    if (!files.length) return;
     setBusy(true);
     setResult(null);
+    setBulkResults([]);
     setTrainMsg("");
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      if (deviceId) fd.append("device_id", deviceId);
-      if (vendor !== "auto") fd.append("vendor", vendor);
-      const res = await api("/ingest", { method: "POST", files: fd });
-      setResult(res);
-      if (res.next_step === "train") {
-        toast(`Unknown vendor detected — ${res.unparsed_count} lines ready to train`);
-      } else if (res.next_step === "recognized_unknown") {
-        toast("This file is now KNOWN — every line auto-recognized. Run the audit.");
-      } else {
-        toast(`Ingest complete — ${res.vendor_label} normalized, ${res.unparsed_count} lines queued`);
+      const outs = [];
+      for (let i = 0; i < files.length; i++) {
+        try {
+          const res = await ingestOne(files[i], i, files.length);
+          outs.push({ file: files[i].name, ok: true, ...res });
+        } catch (e) {
+          outs.push({ file: files[i].name, ok: false, error: e.message });
+        }
       }
-    } catch (e) {
-      toast(`Ingest failed: ${e.message}`);
+      setBulkResults(outs);
+      const firstOk = outs.find((o) => o.ok);
+      if (firstOk) setResult(firstOk);
+      const okCount = outs.filter((o) => o.ok).length;
+      const trainCount = outs.filter((o) => o.ok && o.next_step === "train").length;
+      if (files.length === 1) {
+        const res = firstOk;
+        if (!res) {
+          toast(`Ingest failed: ${outs[0]?.error}`);
+        } else if (res.next_step === "train") {
+          toast(`Unknown vendor detected — ${res.unparsed_count} lines ready to train`);
+        } else if (res.next_step === "recognized_unknown") {
+          toast("This file is now KNOWN — every line auto-recognized. Run the audit.");
+        } else {
+          toast(`Ingest complete — ${res.vendor_label} normalized, ${res.unparsed_count} lines queued`);
+        }
+      } else {
+        toast(`Bulk ingest: ${okCount}/${outs.length} files normalized${trainCount ? `, ${trainCount} need training` : ""}`);
+      }
     } finally {
       setBusy(false);
     }
@@ -82,13 +106,19 @@ export default function UploadIngest() {
         {/* Upload form */}
         <div className="lg:col-span-5 card p-5 space-y-4">
           <div>
-            <label className="label-md block mb-1.5">Config File (.cfg / .txt / .json)</label>
+            <label className="label-md block mb-1.5">Config Files — single or bulk (.cfg / .txt / .json)</label>
             <input
               type="file"
-              accept=".cfg,.txt,.json,.log"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              multiple
+              accept=".cfg,.txt,.json,.log,.conf"
+              onChange={(e) => setFiles(Array.from(e.target.files || []))}
               className="w-full text-sm px-3 py-2 rounded-md bg-sandstoneLight border border-weatheredTaupe text-peatCharcoal file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-sprucePine file:text-[#FCF9F0] file:font-semibold file:text-xs"
             />
+            {files.length > 1 && (
+              <div className="font-mono text-[11px] text-sprucePine mt-1.5 font-semibold">
+                {files.length} files selected — bulk ingest normalizes each to its own device.
+              </div>
+            )}
           </div>
           <div>
             <label className="label-md block mb-1.5">Vendor</label>
@@ -99,12 +129,12 @@ export default function UploadIngest() {
             </select>
           </div>
           <div>
-            <label className="label-md block mb-1.5">Device ID (optional — defaults to hostname or filename)</label>
+            <label className="label-md block mb-1.5">Device ID (optional — single-file only; bulk defaults to hostname or filename)</label>
             <input className="input-field font-mono text-xs" value={deviceId} onChange={(e) => setDeviceId(e.target.value)} placeholder="e.g. core-rtr-mum-01" />
           </div>
-          <button onClick={ingest} disabled={!file || busy} className="btn-primary w-full justify-center !py-2.5">
+          <button onClick={ingest} disabled={!files.length || busy} className="btn-primary w-full justify-center !py-2.5">
             <span className="material-symbols-outlined text-[17px]">{busy ? "hourglass_top" : "upload_file"}</span>
-            <span>{busy ? "Normalizing to baseline…" : "Ingest & Normalize"}</span>
+            <span>{busy ? "Normalizing to baseline…" : files.length > 1 ? `Ingest & Normalize (${files.length} files)` : "Ingest & Normalize"}</span>
           </button>
           <div className="font-mono text-[10px] text-taupe-muted leading-relaxed pt-2 border-t border-weatheredTaupe">
             Sample fixtures live in <code className="text-sprucePine">backend/sample_configs/</code> — compliant + noncompliant
@@ -234,10 +264,54 @@ export default function UploadIngest() {
             <div className="card p-8 flex flex-col items-center justify-center gap-3 min-h-[300px]">
               <span className="material-symbols-outlined text-[44px] text-weatheredTaupe">cloud_upload</span>
               <div className="font-mono text-xs text-taupe-muted uppercase tracking-wider text-center">
-                Select a config file to preview ingest results here.
+                Select one or more config files to preview ingest results here.
                 <br />
-                Vendor is auto-detected from syntax fingerprints.
+                Vendor is auto-detected per file from syntax fingerprints.
               </div>
+            </div>
+          )}
+          {bulkResults.length > 1 && (
+            <div className="card overflow-hidden mt-4">
+              <div className="px-3 py-2 bg-creamParchment border-b border-weatheredTaupe font-display text-xs font-bold text-peatCharcoal">
+                Bulk ingest — {bulkResults.filter((r) => r.ok).length}/{bulkResults.length} normalized
+              </div>
+              <table className="tbl">
+                <thead>
+                  <tr>
+                    <th>File</th>
+                    <th>Device</th>
+                    <th>Vendor</th>
+                    <th>Queued</th>
+                    <th>Next</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bulkResults.map((r, i) => (
+                    <tr key={`${r.file}-${i}`}>
+                      <td className="font-mono text-[11px]">{r.file}</td>
+                      {r.ok ? (
+                        <>
+                          <td className="font-mono text-[11px]">{r.hostname || r.device_id}</td>
+                          <td className="font-mono text-[11px]">{r.vendor_label || r.vendor}</td>
+                          <td className="font-mono text-[11px]">{r.unparsed_count}</td>
+                          <td className="font-mono text-[11px] font-bold">{r.next_step}</td>
+                          <td>
+                            <Link to={`/console/devices/${encodeURIComponent(r.device_id)}`} className="font-mono text-[10px] uppercase font-bold text-sprucePine hover:underline">
+                              open →
+                            </Link>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td colSpan={4} className="font-mono text-[11px] text-terracottaRust">{r.error}</td>
+                          <td></td>
+                        </>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
