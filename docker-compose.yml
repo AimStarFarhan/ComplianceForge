@@ -1,0 +1,24 @@
+services:
+  api:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      CF_ADMIN_PASSWORD: ${CF_ADMIN_PASSWORD:-admin}
+      CF_JWT_SECRET: ${CF_JWT_SECRET:-dev-secret-change-me}
+      # No API key -> deterministic + trained-model path (fully offline).
+      # Optional: ANTHROPIC_API_KEY / OPENAI_API_KEY / CF_USE_LOCAL_LM=1
+    mem_limit: 4g
+    restart: unless-stopped
+
+  ui:
+    image: node:20-slim
+    working_dir: /ui
+    volumes:
+      - ./frontend:/ui
+    ports:
+      - "5173:5173"
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
+    depends_on:
+      - api
+    restart: unless-stopped

@@ -1,14 +1,19 @@
-"""Rule cache: persistent confirmed command->category mappings + similarity match.
+"""Rule cache (L1): persistent confirmed command->category mappings.
 
-The "learning" in ComplianceForge is exactly this:
-  1. AI proposes a category for an unknown line
-  2. a human confirms/corrects/rejects
-  3. confirmed mappings are stored as normalized patterns
-  4. future lines auto-match via pattern + fuzzy similarity
-     (so "set ssh timeout 30" matches an earlier "set ssh timeout 10" mapping)
+The LEARNING in ComplianceForge is NOT this cache alone:
+  Human-verified mappings are continuously added to the learning dataset
+  and used for periodic model updates/fine-tuning.
 
-We deliberately do NOT call this a trained ML classifier — it is a
-human-in-the-loop adaptive mapping cache.
+This cache is L1 of a 3-layer chain (see ai_classifier.classify):
+  L1 exact cache (this file, BOUNDED + high-precision only)
+  L2 trained model (sklearn TF-IDF + LogisticRegression, fixed-size file)
+  L3 fallback (LLM few-shot / offline heuristic, true zero-shot only)
+
+Bounded: MAX_MAPPINGS caps rows so storage is O(1). When full, the
+least-used, oldest mapping is evicted. Fuzzy similarity (>=0.82) is NOT an
+auto-match path anymore — it only surfaces as a proposal that still needs a
+human confirm (see suggest_similar). Only exact normalized-pattern hits
+auto-recognize, so a wrong confirm can never silently PASS via fuzzy drift.
 """
 
 from __future__ import annotations
@@ -46,7 +51,12 @@ def similarity(a: str, b: str) -> float:
     return difflib.SequenceMatcher(None, a, b).ratio()
 
 
-AUTO_MATCH_THRESHOLD = 0.82
+AUTO_MATCH_THRESHOLD = 0.82  # proposals only — never auto-recognizes (see suggest_similar)
+
+# L1 is bounded: storage O(MAX) not O(unknowns). The trained model file
+# (L2) is the fixed-size learner; this cache holds only high-precision
+# exact-pattern shortcuts.
+MAX_MAPPINGS = 2000
 
 
 class RuleCache:
@@ -90,9 +100,28 @@ class RuleCache:
             notes=notes,
         )
         self.db.add(mapping)
+        self.db.flush()
+        self._enforce_bound()
         self.db.commit()
         self.db.refresh(mapping)
         return mapping
+
+    def _enforce_bound(self) -> None:
+        """Evict least-used oldest rows while over cap (keeps storage O(1))."""
+        from app.models.mapping import CommandMapping as _CM
+
+        total = self.db.query(_CM).count()
+        overflow = total - MAX_MAPPINGS
+        if overflow <= 0:
+            return
+        victims = (
+            self.db.query(_CM)
+            .order_by(_CM.times_matched.asc(), _CM.confirmed_at.asc())
+            .limit(overflow)
+            .all()
+        )
+        for v in victims:
+            self.db.delete(v)
 
     def delete(self, mapping_id: int) -> bool:
         obj = self.db.get(CommandMapping, mapping_id)
@@ -112,7 +141,12 @@ class RuleCache:
         return rows[0] if rows else None
 
     def match(self, line: str, vendor_hint: str = "any") -> dict | None:
-        """Exact pattern match first, then fuzzy above threshold."""
+        """L1 auto-match: EXACT normalized-pattern only (confidence 1.0).
+
+        High-precision by design: a wrong human confirm affects exactly its
+        own pattern, never a fuzzy neighborhood. Similar-line proposals are
+        available via suggest_similar() but always require human confirm.
+        """
         pattern = normalize_pattern(line)
         exact = self.find_by_pattern(pattern, vendor_hint)
         if exact:
@@ -127,24 +161,26 @@ class RuleCache:
                 "confirmed_by": exact.confirmed_by,
                 "ai_suggested": exact.ai_suggested,
             }
+        return None
 
-        mappings = self.all_mappings()
+    def suggest_similar(self, line: str, vendor_hint: str = "any") -> dict | None:
+        """Fuzzy proposal (NOT auto-match): best pattern with similarity
+        >= AUTO_MATCH_THRESHOLD, returned for human review only."""
+        pattern = normalize_pattern(line)
         best = None
         best_score = 0.0
-        for mp in mappings:
+        for mp in self.all_mappings():
             if mp.vendor_hint not in ("any", vendor_hint):
                 continue
             score = similarity(pattern, mp.pattern)
             if score > best_score:
                 best, best_score = mp, score
         if best and best_score >= AUTO_MATCH_THRESHOLD:
-            best.times_matched += 1
-            best.last_matched_at = datetime.now(timezone.utc)
-            self.db.commit()
+            # NOTE: no times_matched increment — a proposal is not a match.
             return {
                 "category": best.category,
                 "confidence": round(best_score, 3),
-                "match_type": "similarity",
+                "match_type": "similarity_proposal",
                 "mapping_id": best.id,
                 "confirmed_by": best.confirmed_by,
                 "ai_suggested": best.ai_suggested,
@@ -155,6 +191,8 @@ class RuleCache:
         mappings = self.all_mappings()
         return {
             "total_mappings": len(mappings),
+            "max_mappings": MAX_MAPPINGS,
+            "bounded": True,
             "ai_confirmed": sum(1 for m in mappings if m.ai_suggested),
             "total_matches": sum(m.times_matched for m in mappings),
         }

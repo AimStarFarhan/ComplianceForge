@@ -80,6 +80,19 @@ def fleet_summary(db: Session = Depends(get_db)):
         v["avg_compliance"] = round(sum(v["scores"]) / len(v["scores"]), 1) if v["scores"] else None
         del v["scores"]
 
+    try:
+        from app.core.trained_classifier import dataset_size, get_model_info
+
+        _info = get_model_info()
+        model_info = {
+            "dataset_size": dataset_size(),
+            "model_version": _info.get("model_version", 0),
+            "accuracy": _info.get("accuracy"),
+            "size_bytes": _info.get("size_bytes", 0),
+        }
+    except Exception:
+        model_info = {"dataset_size": 0, "model_version": 0, "accuracy": None, "size_bytes": 0}
+
     return {
         "fleet_compliance_score": fleet_score,
         "device_count": len(device_rows),
@@ -88,4 +101,5 @@ def fleet_summary(db: Session = Depends(get_db)):
         "severity_totals": severity_totals,
         "devices": device_rows,
         "by_vendor": list(vendors.values()),
+        "model": model_info,
     }

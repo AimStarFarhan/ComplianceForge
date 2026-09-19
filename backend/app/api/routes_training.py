@@ -1,14 +1,20 @@
 """Training Loop API.
 
 GET  /training/queue           — unparsed lines needing review (with AI suggestions)
-GET  /training/mappings       — confirmed mapping cache
-POST /training/classify       — ask the AI classifier to propose a category (no verdicts)
-POST /training/confirm        — human confirms/corrects a mapping -> cache
+GET  /training/mappings       — confirmed mapping cache (L1, bounded)
+POST /training/classify       — unified L1/L2/L3 propose a category (no verdicts)
+POST /training/confirm        — human confirms/corrects -> cache AND learning dataset
 DELETE /training/mappings/{id} — remove a mapping
-GET  /training/stats          — cache stats for the dashboard
+GET  /training/stats          — cache + model stats for the dashboard
+GET  /training/model/info     — trained model version, accuracy, per-class F1
+POST /training/model/retrain  — retrain on dataset, promote if acc >= current-0.02
+POST /training/model/rollback/{version} — rollback to a previous artifact
+GET  /training/dataset/export — JSONL {text,label} for future LLM fine-tune
 
-HUMAN-IN-THE-LOOP BOUNDARY: nothing enters the cache without POST /confirm,
-which represents a human decision in the UI.
+HUMAN-IN-THE-LOOP BOUNDARY: nothing enters the cache/dataset without POST
+/confirm or POST /train-device, which represent human decisions in the UI.
+Human-verified mappings are continuously added to the learning dataset and
+used for periodic model updates/fine-tuning.
 """
 
 from __future__ import annotations
@@ -112,18 +118,24 @@ def training_queue(db: Session = Depends(get_db)):
                 rep["suggested_confidence"],
                 "ingest_suggestion",
             )
+            model_version = None
         elif rep["cache_hit"]:
-            # fuzzy/similarity proposal — still needs human confirmation
+            # exact-cache proposal surfaced via ingest enrichment — still
+            # needs human confirmation (queue never auto-confirms)
             category = rep["cache_hit"]["category"]
             confidence = rep["cache_hit"]["confidence"]
-            source = rep["cache_hit"].get("match_type", "similarity")
+            source = rep["cache_hit"].get("match_type", "pattern_exact")
+            model_version = None
         else:
-            proposal = classifier.classify(rep["raw_line"])
+            # unified L1 -> L2 -> L3 chain (L1 already checked above, so
+            # this is effectively L2 trained model -> L3 fallback)
+            proposal = classifier.classify(rep["raw_line"], db=db, vendor_hint=rep["vendor"])
             category, confidence, source = (
                 proposal["category"],
                 proposal["confidence"],
                 proposal["source"],
             )
+            model_version = proposal.get("model_version")
         for m in members:
             entry = {
                 "device_id": m["device_id"],
@@ -134,6 +146,7 @@ def training_queue(db: Session = Depends(get_db)):
                 "ai_category": category,
                 "ai_confidence": confidence,
                 "ai_source": source,
+                "model_version": model_version,
             }
             if m["cache_hit"] and not m["suggested_category"]:
                 entry["match_type"] = m["cache_hit"].get("match_type")
@@ -145,6 +158,7 @@ def training_queue(db: Session = Depends(get_db)):
                 "ai_category": category,
                 "ai_confidence": confidence,
                 "ai_source": source,
+                "model_version": model_version,
                 "vendor": rep["vendor"],
                 "representative_line": rep["raw_line"],
                 "examples": [
@@ -169,13 +183,29 @@ def training_queue(db: Session = Depends(get_db)):
 
 @router.post("/classify", dependencies=[Depends(verify_token)])
 def classify_line(req: ClassifyRequest, db: Session = Depends(get_db)):
-    """AI proposes a category. NEVER a pass/fail verdict — human must confirm."""
-    cache = RuleCache(db)
-    hit = cache.match(req.line)
-    if hit:
-        return {"line": req.line, "cache_match": hit, "ai": None}
-    proposal = get_classifier().classify(req.line)
-    return {"line": req.line, "cache_match": None, "ai": proposal}
+    """Unified L1/L2/L3 proposal. NEVER a pass/fail verdict — human must confirm."""
+    proposal = get_classifier().classify(req.line, db=db)
+    # backward-compat shape: cache_match vs ai (tests + UI read both)
+    if proposal.get("source") == "cache_exact":
+        return {
+            "line": req.line,
+            "cache_match": {
+                "category": proposal["category"],
+                "confidence": proposal["confidence"],
+                "match_type": proposal.get("match_type", "pattern_exact"),
+                "mapping_id": proposal.get("mapping_id"),
+            },
+            "ai": None,
+            "source": proposal["source"],
+            "model_version": proposal.get("model_version"),
+        }
+    return {
+        "line": req.line,
+        "cache_match": None,
+        "ai": proposal,
+        "source": proposal.get("source"),
+        "model_version": proposal.get("model_version"),
+    }
 
 
 @router.get("/mappings", dependencies=[Depends(verify_token)])
@@ -214,6 +244,13 @@ def confirm_mapping(req: ConfirmRequest, db: Session = Depends(get_db)):
         notes=req.notes,
         vendor_hint=req.vendor_hint,
     )
+    # Human-verified mappings are continuously added to the learning dataset
+    # and used for periodic model updates/fine-tuning.
+    from app.core.trained_classifier import append_example
+
+    dataset_appended = append_example(
+        req.example_line, req.category, source=f"human-confirm:{req.confirmed_by}"
+    )
     return {
         "confirmed": True,
         "mapping": {
@@ -223,7 +260,8 @@ def confirm_mapping(req: ConfirmRequest, db: Session = Depends(get_db)):
             "confirmed_by": mapping.confirmed_by,
             "ai_suggested": mapping.ai_suggested,
         },
-        "note": "Human-in-the-loop: this mapping will now auto-match similar future lines.",
+        "dataset_appended": dataset_appended,
+        "note": "Human-in-the-loop: this mapping will now auto-match its exact pattern, and is logged to the learning dataset for the next model update.",
     }
 
 
@@ -254,6 +292,8 @@ def train_device(req: TrainDeviceRequest, db: Session = Depends(get_db)):
 
     cache = RuleCache(db)
     classifier = get_classifier()
+    from app.core.trained_classifier import append_example as _append
+
     trained, skipped, lines = 0, 0, []
     for raw in snap.raw_config.splitlines():
         line = raw.strip()
@@ -266,7 +306,7 @@ def train_device(req: TrainDeviceRequest, db: Session = Depends(get_db)):
         category = req.corrections.get(line)
         ai_suggested = False
         if category is None:
-            proposal = classifier.classify(line)
+            proposal = classifier.classify(line, db=db, vendor_hint=device.vendor)
             category = proposal["category"]
             confidence = proposal["confidence"]
             ai_suggested = True
@@ -283,6 +323,7 @@ def train_device(req: TrainDeviceRequest, db: Session = Depends(get_db)):
             vendor_hint=device.vendor,
             notes="bulk train-device",
         )
+        _append(line, category, source=f"train-device:{req.confirmed_by}")
         trained += 1
         lines.append({"line": line, "category": category, "source": "ai+human" if ai_suggested else "human"})
 
@@ -298,7 +339,91 @@ def train_device(req: TrainDeviceRequest, db: Session = Depends(get_db)):
 
 @router.get("/stats", dependencies=[Depends(verify_token)])
 def training_stats(db: Session = Depends(get_db)):
-    return RuleCache(db).stats()
+    from app.core.trained_classifier import dataset_size, get_model_info
+
+    stats = RuleCache(db).stats()
+    info = get_model_info()
+    stats.update(
+        {
+            "dataset_size": dataset_size(),
+            "model_version": info.get("model_version", 0),
+            "model_accuracy": info.get("accuracy"),
+            "model_size_bytes": info.get("size_bytes", 0),
+        }
+    )
+    return stats
+
+
+@router.get("/model/info", dependencies=[Depends(verify_token)])
+def model_info():
+    """Versioned artifact info: version, accuracy, per-category F1, size."""
+    from app.core.trained_classifier import dataset_size, get_model_info
+
+    info = get_model_info()
+    info["dataset_size"] = dataset_size()
+    return info
+
+
+@router.post("/model/retrain", dependencies=[Depends(verify_token)])
+def model_retrain():
+    """Periodic update job: retrain on the learning dataset (80/20 split).
+
+    Promotes the new artifact only if accuracy >= current - 0.02 (accuracy
+    gate); otherwise rolls back to the previous version and reports both
+    scores. Storage stays O(model size), not O(unknowns).
+    """
+    from app.core.trained_classifier import get_model_info, set_current_version, train_and_save
+
+    before = get_model_info()
+    prev_version = before.get("model_version", 0)
+    prev_acc = before.get("accuracy")
+    entry = train_and_save()
+    new_acc = entry["accuracy"]
+    gate = (prev_acc is None) or (new_acc >= prev_acc - 0.02)
+    if not gate:
+        set_current_version(prev_version)
+        return {
+            "promoted": False,
+            "reason": f"accuracy gate: new {new_acc} < current {prev_acc} - 0.02; kept v{prev_version}",
+            "previous": {"version": prev_version, "accuracy": prev_acc},
+            "candidate": entry,
+        }
+    return {"promoted": True, "model": entry, "previous": {"version": prev_version, "accuracy": prev_acc}}
+
+
+@router.post("/model/rollback/{version}", dependencies=[Depends(verify_token)])
+def model_rollback(version: int):
+    """Rollback to a previous versioned artifact."""
+    from app.core.trained_classifier import set_current_version
+
+    try:
+        info = set_current_version(version)
+    except ValueError as exc:
+        raise HTTPException(404, str(exc))
+    return {"rolled_back": True, "model": info}
+
+
+@router.get("/dataset/export", dependencies=[Depends(verify_token)])
+def dataset_export():
+    """Export learning dataset as JSONL {text,label} for future LLM fine-tune."""
+    from fastapi.responses import PlainTextResponse
+
+    from app.core.trained_classifier import DATASET_PATH
+
+    if not DATASET_PATH.exists():
+        raise HTTPException(404, "No dataset yet")
+    rows = []
+    with open(DATASET_PATH, encoding="utf-8") as f:
+        for raw in f:
+            raw = raw.strip()
+            if not raw:
+                continue
+            try:
+                obj = json.loads(raw)
+                rows.append(json.dumps({"text": obj["text"], "label": obj["label"]}))
+            except (json.JSONDecodeError, KeyError):
+                continue
+    return PlainTextResponse("\n".join(rows), media_type="application/x-ndjson")
 
 
 def _load_normalized(snap: ConfigSnapshot) -> dict:

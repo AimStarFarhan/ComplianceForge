@@ -48,7 +48,13 @@ export default function Header() {
           </div>
           <div
             className="flex items-center gap-1.5 px-2 py-0.5 rounded text-sageMuted font-mono text-[11px]"
-            title={health?.ai_label || "AI classifier mode"}
+            title={
+              health
+                ? `Dataset: ${health.dataset_size ?? "?"} examples · Model v${health.model_version ?? 0}${
+                    health.model_accuracy != null ? ` · acc ${Math.round(health.model_accuracy * 100)}%` : ""
+                  } · ${health.ai_label || ""}`
+                : "AI classifier mode"
+            }
           >
             <span
               className="w-1.5 h-1.5 rounded-full animate-pulse"
@@ -63,6 +69,13 @@ export default function Header() {
                     ? "Deterministic · LLM-ready"
                     : "AI: …"}
             </span>
+            {health?.model_version > 0 && (
+              <span className="ml-1 px-1.5 py-px rounded bg-sprucePine border border-mutedMeadow/50 text-[#FCF9F0]">
+                v{health.model_version}
+                {health.model_accuracy != null ? ` · ${Math.round(health.model_accuracy * 100)}%` : ""} ·{" "}
+                {health.dataset_size ?? 0} ex
+              </span>
+            )}
           </div>
         </div>
 
