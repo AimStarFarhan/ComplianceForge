@@ -107,8 +107,13 @@ async def ingest_config(
     db.refresh(snapshot)
     db.refresh(device)
 
-    # enrichment: match unparsed lines against confirmed cache
+    # enrichment: L1 exact-cache recognition + L2/L3 suggestions.
+    # Only exact human-confirmed patterns count as recognized; L2/L3
+    # proposals are attached as suggestions for the Training Queue.
+    from app.core.ai_classifier import get_classifier as _get_clf
+
     cache = RuleCache(db)
+    clf = _get_clf()
     enriched_unparsed = []
     recognized_count = 0
     for ul in normalized.get("unparsed_lines", []):
@@ -119,6 +124,16 @@ async def ingest_config(
             ul["suggested_confidence"] = hit["confidence"]
             ul["match_type"] = hit["match_type"]
             recognized_count += 1
+        else:
+            try:
+                proposal = clf.classify(ul["text"], db=db, vendor_hint=chosen_vendor)
+            except Exception:
+                proposal = None
+            if proposal and proposal.get("category") not in (None, "unknown"):
+                ul["suggested_category"] = proposal["category"]
+                ul["suggested_confidence"] = proposal["confidence"]
+                ul["suggested_source"] = proposal.get("source")
+                ul["suggested_model_version"] = proposal.get("model_version")
         enriched_unparsed.append(ul)
 
     is_unknown = chosen_vendor == VENDOR_UNSEEN

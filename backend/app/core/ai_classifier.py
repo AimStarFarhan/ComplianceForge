@@ -1,12 +1,21 @@
-"""AI classifier: LLM few-shot classification of unparsed config lines.
+"""AI classifier: unified 3-layer classification chain for unparsed config lines.
 
 DESIGN BOUNDARY (stated deliberately):
-  The LLM is NEVER used for pass/fail verdicts. It only PROPOSES a security
+  The classifier NEVER issues pass/fail verdicts. It only PROPOSES a security
   category for lines the deterministic parsers didn't recognize. A human must
-  confirm before anything enters the rule cache.
+  confirm before anything enters the cache or dataset.
 
-Offline safety: if no API key is configured, a deterministic heuristic
-classifier proposes categories instead, so the demo works without network.
+Chain (first success wins, never raises):
+  L1 exact cache (RuleCache.match, confidence 1.0 — BOUNDED, high-precision)
+  L2 trained model (sklearn TF-IDF + LogisticRegression, fixed-size file;
+     Human-verified mappings are continuously added to the learning dataset
+     and used for periodic model updates/fine-tuning.)
+  L3 fallback (local LM when CF_USE_LOCAL_LM=1, else cloud LLM, else
+     deterministic keyword heuristic — true zero-shot only)
+
+One classify(line) entrypoint, used by BOTH routes_training (queue/classify)
+and routes_ingest (enrichment). Returns
+{category, confidence, source, model_version, reason}.
 """
 
 from __future__ import annotations
@@ -117,32 +126,77 @@ class AIClassifier:
         self.use_local_lm = os.environ.get("CF_USE_LOCAL_LM", "0") == "1"
 
     # ------------------------------------------------------------------ public
-    def classify(self, line: str) -> dict:
-        """Return {category, confidence, source, reason}.
+    def classify(self, line: str, db=None, vendor_hint: str = "any") -> dict:
+        """Unified L1 -> L2 -> L3 chain. Never raises.
 
-        Fallback chain (first success wins, never raises):
-          1. local LM (LM Studio) — OPT-IN via CF_USE_LOCAL_LM=1 (air-gapped
-             mode; heavy local models can take ~30-60s/line)
-          2. cloud LLM (Anthropic/OpenAI) — if an API key is configured
-          3. deterministic keyword heuristic — instant, always works
+        L1 needs a DB session (passed by routes); without one, starts at L2.
         """
+        # L1 — exact cache (bounded, high-precision only)
+        if db is not None:
+            try:
+                from app.core.rule_cache import RuleCache as _RC
+
+                hit = _RC(db).match(line, vendor_hint=vendor_hint)
+                if hit:
+                    return {
+                        "category": hit["category"],
+                        "confidence": 1.0,
+                        "source": "cache_exact",
+                        "model_version": None,
+                        "reason": "Exact normalized-pattern match on a human-confirmed mapping.",
+                        "match_type": hit.get("match_type"),
+                        "mapping_id": hit.get("mapping_id"),
+                    }
+            except Exception:
+                pass  # fall through to L2
+
+        # L2 — trained model (fixed-size file, accuracy-gated, rollbackable)
+        try:
+            from app.core import trained_classifier as _tc
+
+            category, confidence = _tc.predict(line)
+            if confidence >= _tc.CONFIDENCE_THRESHOLD and category != "unknown":
+                info = _tc.get_model_info()
+                return {
+                    "category": category,
+                    "confidence": confidence,
+                    "source": f"trained_model_v{info.get('model_version', 0)}",
+                    "model_version": info.get("model_version", 0),
+                    "reason": (
+                        f"L2 trained model (acc {info.get('accuracy')}, "
+                        f"n={info.get('n_examples')}) — still needs human confirm."
+                    ),
+                }
+        except Exception:
+            pass  # fall through to L3
+
+        # L3 — local LM / cloud LLM / heuristic (true zero-shot only)
+        return self._classify_l3(line)
+
+    def _classify_l3(self, line: str) -> dict:
+        """Previous LLM+heuristic fallback chain, now explicitly L3."""
         # 1 — local LM, only when explicitly enabled (it's slow on most hardware)
         if self.use_local_lm and httpx is not None:
             try:
-                return self._classify_local_lm(line)
+                result = self._classify_local_lm(line)
+                result.setdefault("model_version", None)
+                return result
             except Exception:
                 pass  # fall through to next layer
 
         # 2 — cloud LLM
         if not self.offline and httpx is not None:
             try:
-                return self._classify_anthropic(line)
+                result = self._classify_anthropic(line)
+                result.setdefault("model_version", None)
+                return result
             except Exception as exc:
                 category, confidence = heuristic_classify(line)
                 return {
                     "category": category,
                     "confidence": confidence,
                     "source": "heuristic_offline",
+                    "model_version": None,
                     "reason": f"LLM call failed ({type(exc).__name__}); heuristic fallback used.",
                 }
 
@@ -152,6 +206,7 @@ class AIClassifier:
             "category": category,
             "confidence": confidence,
             "source": "heuristic_offline",
+            "model_version": None,
             "reason": "Offline heuristic keyword match (no LM available).",
         }
 
@@ -258,6 +313,7 @@ class AIClassifier:
                 "category": category,
                 "confidence": min(max(confidence, 0.0), 1.0),
                 "source": f"llm_{engine}",
+                "model_version": None,
                 "reason": str(obj.get("reason", ""))[:200],
             }
         except (json.JSONDecodeError, ValueError, TypeError):
@@ -266,6 +322,7 @@ class AIClassifier:
                 "category": "unknown",
                 "confidence": 0.3,
                 "source": "heuristic_offline",
+                "model_version": None,
                 "reason": "LLM response unparseable; flagged for human review.",
             }
 

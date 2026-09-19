@@ -126,6 +126,13 @@ def health():
     else:
         mode = "deterministic"
         label = "Deterministic classifier — LLM-ready (set ANTHROPIC_API_KEY/OPENAI_API_KEY or CF_USE_LOCAL_LM=1 for neural mode)"
+    try:
+        from app.core.trained_classifier import dataset_size, get_model_info
+
+        info = get_model_info()
+        ds_size = dataset_size()
+    except Exception:
+        info, ds_size = {}, 0
     return {
         "status": "ok",
         "ai_mode": mode,
@@ -134,4 +141,9 @@ def health():
         "ai_mode_legacy": "offline_heuristic" if mode == "deterministic" else mode,
         "local_lm_url": "http://localhost:1234",
         "advisory_only": True,
+        # learning-dataset + trained-model proof (judge narrative)
+        "dataset_size": ds_size,
+        "model_version": info.get("model_version", 0),
+        "model_accuracy": info.get("accuracy"),
+        "model_size_bytes": info.get("size_bytes", 0),
     }
