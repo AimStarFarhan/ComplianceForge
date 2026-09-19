@@ -12,11 +12,13 @@ The system learns **new, previously unseen vendor syntaxes**:
 
 1. Ingest an unknown-vendor config → every unrecognized line lands in the Training Queue with an AI-proposed category
 2. A human admin confirms/corrects — one line at a time, or one-click **"Train on this data"**
-3. Confirmed mappings are stored as normalized patterns (numbers/IPs templated out)
+3. Human-verified mappings are continuously added to the learning dataset and used for periodic model updates/fine-tuning.
 4. Re-ingesting the same file: every line **auto-recognizes** — the vendor is now *known*
 5. Full rule audits then run on the learned vendor, with every finding tagged `ai_suggested_human_confirmed` for auditability
 
-The AI layer **never issues pass/fail verdicts** — it only proposes categories for a human to confirm. With no API key configured, a deterministic offline heuristic classifier is used so demos never break.
+Classification is a 3-layer chain: **L1** exact confirmed-pattern cache (bounded, high-precision only) → **L2** trained sklearn TF-IDF + LogisticRegression model (fixed-size ~1MB artifact, accuracy-gated promotion, rollbackable) → **L3** LLM/heuristic fallback for true zero-shot lines only.
+
+The AI layer **never issues pass/fail verdicts** — it only proposes categories for a human to confirm. With no API key configured, the trained model + deterministic offline heuristic classifier are used so demos never break.
 
 ## Quick start
 
@@ -76,7 +78,14 @@ cd backend
 python -m pytest tests -q
 ```
 
-Covers vendor autodetection, all three parsers, rule packs, the safe AST evaluator (including code-injection rejection), the rule cache similarity matching, and the full API flow including the learn-a-new-vendor loop.
+Covers vendor autodetection, all three parsers, rule packs, the safe AST evaluator (including code-injection rejection), the rule cache similarity matching, the trained-model smoke + retrain promote/rollback gate, and the full API flow including the learn-a-new-vendor loop.
+
+## Model
+
+- Dataset: `backend/app/core/training_data/dataset.jsonl` — ~1,200 balanced lines (~55–80 per each of 19 categories), deduped by normalized pattern. Sources: hand-verified rule-pack remediation CLI, sample-config syntax, sieved real-world configs (1,732 files → 5,158 candidates), synthetic fills for thin classes.
+- Train: `python backend/scripts/train_model.py` — 80/20 stratified split, promotes `model_vN.pkl` + `metadata.json` (accuracy, per-category F1) into `backend/app/core/model_artifacts/`.
+- Serve: fixed-size artifact (~1MB whether 1k or 100k examples) via `trained_classifier.predict(text)`. Retrain/rollback/export: `POST /training/model/retrain`, `POST /training/model/rollback/{version}`, `GET /training/dataset/export`. Health + dashboard show `dataset_size, model_version, accuracy`.
+- Docker: `docker compose up` (CPU-only `python:3.12-slim` backend with baked-in model + Vite UI).
 
 ## Honest AI claims
 
