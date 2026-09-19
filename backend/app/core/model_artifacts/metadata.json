@@ -347,6 +347,35 @@
       },
       "model_file": "model_v12.pkl",
       "size_bytes": 887307
+    },
+    {
+      "version": 13,
+      "trained_at": "2026-09-19T16:46:54.368741+00:00",
+      "n_examples": 1323,
+      "accuracy": 0.7623,
+      "per_category_f1": {
+        "aaa": 0.774,
+        "access_control": 0.621,
+        "acl_logging": 0.714,
+        "authentication": 0.818,
+        "banner": 1.0,
+        "cryptography": 0.733,
+        "interface_security": 0.625,
+        "logging": 0.462,
+        "management_protocol": 0.7,
+        "ntp": 0.88,
+        "password_policy": 0.848,
+        "privilege_escalation": 0.783,
+        "routing_integrity": 0.938,
+        "service_hardening": 0.69,
+        "snmp_management": 0.938,
+        "ssh_policy": 0.875,
+        "syslog": 0.562,
+        "unknown": 0.5,
+        "zone_policy": 0.938
+      },
+      "model_file": "model_v13.pkl",
+      "size_bytes": 887307
     }
   ],
   "current_version": 4
