@@ -85,13 +85,44 @@ def fleet_summary(db: Session = Depends(get_db)):
 
         _info = get_model_info()
         model_info = {
+            "ai_name": "CompilerAI",
             "dataset_size": dataset_size(),
             "model_version": _info.get("model_version", 0),
             "accuracy": _info.get("accuracy"),
             "size_bytes": _info.get("size_bytes", 0),
         }
     except Exception:
-        model_info = {"dataset_size": 0, "model_version": 0, "accuracy": None, "size_bytes": 0}
+        model_info = {"ai_name": "CompilerAI", "dataset_size": 0, "model_version": 0, "accuracy": None, "size_bytes": 0}
+
+    # Fleet-wide audit history: every device that has gone through the audit
+    # tests, newest run first (powers the Dashboard "Audit History" timeline).
+    recent_audits: list[dict] = []
+    try:
+        all_runs = list(
+            db.scalars(select(AuditRun).order_by(AuditRun.id.desc()).limit(50)).all()
+        )
+        by_device_id = {d.id: d for d in devices}
+        for r in all_runs:
+            d = by_device_id.get(r.device_fk)
+            if d is None:
+                continue
+            recent_audits.append(
+                {
+                    "run_id": r.id,
+                    "device_id": d.device_id,
+                    "hostname": d.hostname,
+                    "vendor": d.vendor,
+                    "vendor_label": VENDOR_LABELS.get(d.vendor, d.vendor),
+                    "is_unseen_vendor": d.is_unseen_vendor,
+                    "compliance_pct": r.compliance_pct,
+                    "pass_count": r.pass_count,
+                    "fail_count": r.fail_count,
+                    "unparsed_count": r.unparsed_count,
+                    "ran_at": r.ran_at.isoformat() if r.ran_at else None,
+                }
+            )
+    except Exception:
+        recent_audits = []
 
     return {
         "fleet_compliance_score": fleet_score,
@@ -102,4 +133,5 @@ def fleet_summary(db: Session = Depends(get_db)):
         "devices": device_rows,
         "by_vendor": list(vendors.values()),
         "model": model_info,
+        "recent_audits": recent_audits,
     }

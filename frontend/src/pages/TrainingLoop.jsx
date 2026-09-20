@@ -10,8 +10,12 @@ const CATEGORIES = [
 ];
 
 function ClusterCard({ cluster, onConfirmCluster, busy }) {
-  const [selected, setSelected] = useState(cluster.ai_category || "unknown");
+  const proposed = cluster.ai_category || "unknown";
+  const [selected, setSelected] = useState(proposed);
+  const [note, setNote] = useState("");
   const low = cluster.ai_confidence != null && cluster.ai_confidence < 0.7;
+  const isCorrection = selected !== proposed;
+  const isUnknown = selected === "unknown";
 
   return (
     <div className="card p-4 border-l-4 border-l-mutedMeadow">
@@ -39,7 +43,7 @@ function ClusterCard({ cluster, onConfirmCluster, busy }) {
           </details>
         </div>
         <div className="text-right shrink-0">
-          <div className="label-xs">AI Proposal</div>
+          <div className="label-xs">CompilerAI Proposal</div>
           <div className="font-mono text-xs mt-0.5 font-bold" style={{ color: low ? "var(--warn)" : "var(--pass)" }}>
             {cluster.ai_category || "—"} {cluster.ai_confidence != null && `(${Math.round(cluster.ai_confidence * 100)}%)`}
           </div>
@@ -49,21 +53,36 @@ function ClusterCard({ cluster, onConfirmCluster, busy }) {
       <div className="flex items-center gap-2 flex-wrap">
         <select className="input-field !w-64 !py-1.5 text-xs font-mono" value={selected} onChange={(e) => setSelected(e.target.value)}>
           {CATEGORIES.map((c) => (
-            <option key={c} value={c}>{c}</option>
+            <option key={c} value={c}>{c}{c === proposed ? "  (CompilerAI proposal)" : ""}</option>
           ))}
         </select>
-        <button disabled={busy} onClick={() => onConfirmCluster(cluster, selected)} className="btn-primary !py-1.5">
-          <span className="material-symbols-outlined text-[15px]">done_all</span>
-          <span>Confirm pattern (×{cluster.count})</span>
+        <button disabled={busy || isUnknown} onClick={() => onConfirmCluster(cluster, selected, note)} className="btn-primary !py-1.5" title={isCorrection ? "Save your correction for all lines in this pattern" : "Agree with the CompilerAI proposal for all lines in this pattern"}>
+          <span className="material-symbols-outlined text-[15px]">{isCorrection ? "edit" : "done_all"}</span>
+          <span>{isCorrection ? `Save Correction (×${cluster.count})` : `Confirm Proposal (×${cluster.count})`}</span>
         </button>
       </div>
+      <input
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder="Reviewer note (optional)…"
+        className="input-field !py-1.5 text-xs mt-2"
+      />
+      {isUnknown && (
+        <div className="font-mono text-[10px] mt-1.5 text-ochreHazard font-bold uppercase tracking-wider">
+          Pick a real category — &apos;unknown&apos; can never be confirmed and stays queued.
+        </div>
+      )}
     </div>
   );
 }
 
-function QueueCard({ entry, onConfirm, onReject, busy }) {
-  const [selected, setSelected] = useState(entry.ai_category || "unknown");
+function QueueCard({ entry, onConfirm, onSkip, busy }) {
+  const proposed = entry.ai_category || "unknown";
+  const [selected, setSelected] = useState(proposed);
+  const [note, setNote] = useState("");
   const low = entry.ai_confidence != null && entry.ai_confidence < 0.7;
+  const isCorrection = selected !== proposed;
+  const isUnknown = selected === "unknown";
 
   return (
     <div className="card p-4 border-l-4 border-l-ochreHazard">
@@ -77,7 +96,7 @@ function QueueCard({ entry, onConfirm, onReject, busy }) {
           </div>
         </div>
         <div className="text-right shrink-0">
-          <div className="label-xs">AI Proposal</div>
+          <div className="label-xs">CompilerAI Proposal</div>
           <div className="font-mono text-xs mt-0.5 font-bold" style={{ color: low ? "var(--warn)" : "var(--pass)" }}>
             {entry.ai_category || "—"} {entry.ai_confidence != null && `(${Math.round(entry.ai_confidence * 100)}%)`}
           </div>
@@ -87,20 +106,36 @@ function QueueCard({ entry, onConfirm, onReject, busy }) {
       <div className="flex items-center gap-2 flex-wrap">
         <select className="input-field !w-64 !py-1.5 text-xs font-mono" value={selected} onChange={(e) => setSelected(e.target.value)}>
           {CATEGORIES.map((c) => (
-            <option key={c} value={c}>{c}</option>
+            <option key={c} value={c}>{c}{c === proposed ? "  (CompilerAI proposal)" : ""}</option>
           ))}
         </select>
-        <button disabled={busy} onClick={() => onConfirm(entry, selected)} className="btn-primary !py-1.5">
-          <span className="material-symbols-outlined text-[15px]">check</span>
-          <span>Confirm Mapping</span>
+        <button disabled={busy || isUnknown} onClick={() => onConfirm(entry, selected, note)} className="btn-primary !py-1.5" title={isUnknown ? "Pick a real category — 'unknown' stays queued" : isCorrection ? "Save your correction — logged as a correction, not a confirm" : "Agree with the CompilerAI proposal"}>
+          <span className="material-symbols-outlined text-[15px]">{isCorrection ? "edit" : "check"}</span>
+          <span>{isCorrection ? "Save Correction" : "Confirm Proposal"}</span>
         </button>
-        <button disabled={busy} onClick={() => onReject(entry)} className="btn-ghost !py-1.5">
-          <span className="material-symbols-outlined text-[15px] text-terracottaRust">close</span>
-          <span>Reject</span>
+        <button disabled={busy} onClick={() => onSkip(entry)} className="btn-ghost !py-1.5" title="Leave this line queued for later — nothing is written">
+          <span className="material-symbols-outlined text-[15px] text-terracottaRust">schedule</span>
+          <span>Skip for now</span>
         </button>
       </div>
+      <input
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder="Reviewer note (optional) — e.g. why you corrected this…"
+        className="input-field !py-1.5 text-xs mt-2"
+      />
+      {isUnknown && (
+        <div className="font-mono text-[10px] mt-1.5 text-ochreHazard font-bold uppercase tracking-wider">
+          Pick a real category to resolve this line — &apos;unknown&apos; can never be confirmed and stays queued.
+        </div>
+      )}
+      {isCorrection && !isUnknown && (
+        <div className="font-mono text-[10px] mt-1.5 text-sprucePine font-bold uppercase tracking-wider">
+          You changed CompilerAI&apos;s proposal ({proposed} → {selected}) — this will be logged as a correction.
+        </div>
+      )}
       <div className="font-mono text-[9px] text-taupe-muted mt-2 uppercase tracking-wider">
-        Confirming stores a normalized pattern so similar future lines auto-match — no re-asking.
+        Confirming stores a normalized pattern so identical future lines auto-match — similar lines still ask.
       </div>
     </div>
   );
@@ -109,26 +144,114 @@ function QueueCard({ entry, onConfirm, onReject, busy }) {
 export default function TrainingLoop() {
   const { data: queueData, loading, reload: reloadQueue } = useApi("/training/queue");
   const { data: mappingData, reload: reloadMappings } = useApi("/training/mappings");
+  const { data: vendorData, reload: reloadVendors } = useApi("/training/vendors");
+  const { data: decisionData, reload: reloadDecisions } = useApi("/training/decisions?limit=50");
   const [busy, setBusy] = useState(false);
+  const [bulkSummaries, setBulkSummaries] = useState({});
   const toast = useToast();
 
-  const confirm = async (entry, category) => {
+  const queueEntries = queueData?.queue || [];
+  // explicit approvals only: unknown proposals can never be bulk-approved
+  const approvableByDevice = useMemo(() => {
+    const groups = {};
+    for (const e of queueEntries) {
+      if (!e.ai_category || e.ai_category === "unknown") continue;
+      (groups[e.device_id] = groups[e.device_id] || []).push(e);
+    }
+    return groups;
+  }, [queueData]);
+
+  // ---- bulk review table: the reviewer sees and corrects every row here,
+  // so this panel IS manual review at speed — not blind approval.
+  const [bulkCats, setBulkCats] = useState({});       // deviceId -> { rowKey: category }
+  const [bulkReviewed, setBulkReviewed] = useState({}); // deviceId -> checkbox state
+  const rowKey = (e) => `${e.line_number}::${e.raw_line}`;
+  const rowCat = (deviceId, e) => (bulkCats[deviceId] || {})[rowKey(e)] ?? e.ai_category;
+  const setRowCat = (deviceId, e, cat) =>
+    setBulkCats((s) => ({ ...s, [deviceId]: { ...(s[deviceId] || {}), [rowKey(e)]: cat } }));
+
+  const buildApprovals = (deviceId, forPreview = false) => {
+    const reviewedAll = forPreview || !!bulkReviewed[deviceId];
+    return (approvableByDevice[deviceId] || [])
+      .map((e) => {
+        const cat = rowCat(deviceId, e);
+        if (!cat || cat === "unknown") return null; // stays queued, never approved
+        const changed = cat !== e.ai_category;
+        return {
+          line_number: e.line_number,
+          raw_line: e.raw_line,
+          category: cat,
+          // changed rows are always human-reviewed; unchanged rows count only
+          // once the reviewer ticks "I reviewed every row" (low-confidence
+          // lines otherwise stay queued for individual review).
+          human_reviewed: changed || reviewedAll,
+        };
+      })
+      .filter(Boolean);
+  };
+
+  const bulkDryRun = async (deviceId) => {
     setBusy(true);
     try {
+      const res = await api("/training/train-device", {
+        method: "POST",
+        body: { device_id: deviceId, approvals: buildApprovals(deviceId, true), dry_run: true },
+      });
+      setBulkSummaries((s) => ({ ...s, [deviceId]: res }));
+    } catch (e) {
+      toast(`Dry-run failed: ${e.message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const bulkApprove = async (deviceId) => {
+    setBusy(true);
+    try {
+      const approvals = buildApprovals(deviceId);
+      if (!approvals.length) {
+        toast("Nothing approvable — rows left as 'unknown' stay queued for individual review.");
+        return;
+      }
+      const res = await api("/training/train-device", {
+        method: "POST",
+        body: { device_id: deviceId, approvals },
+      });
+      toast(res.headline || `Approved ${res.trained_lines} lines.`);
+      setBulkSummaries((s) => ({ ...s, [deviceId]: null }));
+      setBulkCats((s) => ({ ...s, [deviceId]: {} }));
+      setBulkReviewed((s) => ({ ...s, [deviceId]: false }));
+      reloadQueue();
+      reloadMappings();
+      reloadVendors();
+      reloadDecisions();
+    } catch (e) {
+      toast(`Bulk approve failed: ${e.message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirm = async (entry, category, note = "") => {
+    setBusy(true);
+    try {
+      // identity + proposal provenance are server-derived from the JWT;
+      // the client only sends the line, the chosen category, and context.
       const res = await api("/training/confirm", {
         method: "POST",
         body: {
           example_line: entry.raw_line,
           category,
-          confirmed_by: "admin",
-          ai_suggested: Boolean(entry.ai_category) && entry.ai_category === category,
-          ai_confidence: entry.ai_confidence ?? null,
           vendor_hint: entry.vendor || "any",
+          notes: note,
         },
       });
-      toast(`Confirmed: "${entry.raw_line.slice(0, 40)}…" → ${res.mapping.category}. Similar lines now auto-match.`);
+      const verdict = res.decision === "corrected" ? "Correction saved" : "Proposal confirmed";
+      toast(`${verdict}: "${entry.raw_line.slice(0, 40)}…" → ${res.mapping.category}. Similar lines now auto-match.`);
       reloadQueue();
       reloadMappings();
+      reloadVendors();
+      reloadDecisions();
     } catch (e) {
       toast(`Confirm failed: ${e.message}`);
     } finally {
@@ -136,9 +259,9 @@ export default function TrainingLoop() {
     }
   };
 
-  const reject = (entry) => toast(`Rejected "${entry.raw_line.slice(0, 40)}" — stays queued for a future reviewer.`);
+  const skip = (entry) => toast(`Skipped "${entry.raw_line.slice(0, 40)}…" — left queued, nothing was written.`);
 
-  const confirmCluster = async (cluster, category) => {
+  const confirmCluster = async (cluster, category, note = "") => {
     setBusy(true);
     try {
       const res = await api("/training/confirm", {
@@ -146,16 +269,16 @@ export default function TrainingLoop() {
         body: {
           example_line: cluster.representative_line,
           category,
-          confirmed_by: "admin",
-          ai_suggested: Boolean(cluster.ai_category) && cluster.ai_category === category,
-          ai_confidence: cluster.ai_confidence ?? null,
           vendor_hint: cluster.vendor || "any",
-          notes: `bulk pattern confirm ×${cluster.count}`,
+          notes: note || `bulk pattern confirm ×${cluster.count}`,
         },
       });
-      toast(`Pattern confirmed: "${cluster.pattern}" → ${res.mapping.category}. ${cluster.count} line(s) now auto-match.`);
+      const verdict = res.decision === "corrected" ? "Pattern correction saved" : "Pattern confirmed";
+      toast(`${verdict}: "${cluster.pattern}" → ${res.mapping.category}. ${cluster.count} line(s) now auto-match.`);
       reloadQueue();
       reloadMappings();
+      reloadVendors();
+      reloadDecisions();
     } catch (e) {
       toast(`Confirm failed: ${e.message}`);
     } finally {
@@ -170,6 +293,25 @@ export default function TrainingLoop() {
       toast("Mapping removed. Lines using it return to the queue.");
       reloadMappings();
       reloadQueue();
+      reloadVendors();
+      reloadDecisions();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const revokeVendor = async (vendor) => {
+    if (!window.confirm(`Revoke CompilerAI access to '${vendor}'? ${vendorData?.vendors?.find((v) => v.vendor === vendor)?.mappings ?? ""} learned mappings will be removed and its lines return to the queue as unknown.`)) return;
+    setBusy(true);
+    try {
+      const res = await api(`/training/vendors/${encodeURIComponent(vendor)}/revoke`, { method: "POST" });
+      toast(`Revoked '${vendor}' — ${res.removed_mappings} mappings removed. CompilerAI no longer recognizes it.`);
+      reloadMappings();
+      reloadQueue();
+      reloadVendors();
+      reloadDecisions();
+    } catch (e) {
+      toast(`Revoke failed: ${e.message}`);
     } finally {
       setBusy(false);
     }
@@ -189,13 +331,14 @@ export default function TrainingLoop() {
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-display text-xl text-peatCharcoal font-bold tracking-tight">Human-in-the-Loop Adaptive Learning</span>
-                <span className="px-2 py-0.5 rounded bg-sprucePine text-[#FCF9F0] font-mono text-[10px] font-bold uppercase tracking-wider">Adaptive AI</span>
+                <span className="font-display text-xl text-peatCharcoal font-bold tracking-tight">CompilerAI — Human-in-the-Loop Learning</span>
+                <span className="px-2 py-0.5 rounded bg-sprucePine text-[#FCF9F0] font-mono text-[10px] font-bold uppercase tracking-wider">CompilerAI</span>
               </div>
               <div className="font-mono text-xs text-taupe-muted mt-2 max-w-2xl leading-relaxed">
-                The AI layer <strong className="text-peatCharcoal">never issues pass/fail verdicts</strong>. It only proposes
+                <strong className="text-peatCharcoal">CompilerAI</strong> compiles unknown vendor syntax into known
+                categories — but it <strong className="text-peatCharcoal">never issues pass/fail verdicts</strong>. It only proposes
                 categories for lines the deterministic parsers couldn't map — a named admin confirms before anything
-                enters the learned rule cache.
+                enters the learned rule cache. Once trained, the same unknown syntax auto-recognizes on re-ingest.
               </div>
             </div>
           </div>
@@ -210,11 +353,106 @@ export default function TrainingLoop() {
             </div>
             <div className="text-center">
               <div className="font-display text-4xl font-bold text-mutedMeadow leading-none">{aiConfirmed}</div>
-              <div className="label-xs mt-1.5">AI + Human-Confirmed</div>
+              <div className="label-xs mt-1.5">CompilerAI + Human</div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Bulk review — a real per-line review table, not blind approval */}
+      {Object.keys(approvableByDevice).length > 0 && (
+        <section className="card p-4 border-l-4 border-l-sprucePine">
+          <div className="label-md mb-1">Bulk Review — review every line, correct where CompilerAI is wrong</div>
+          <div className="font-mono text-[10px] text-taupe-muted mb-3 uppercase tracking-wider">
+            Each row shows CompilerAI&apos;s proposal — change the dropdown wherever you disagree, then preview and approve.
+            Rows left as &apos;unknown&apos; are never approved and stay queued.
+          </div>
+          <div className="space-y-3">
+            {Object.entries(approvableByDevice).map(([deviceId, entries]) => {
+              const summary = bulkSummaries[deviceId];
+              const changed = entries.filter((e) => rowCat(deviceId, e) !== e.ai_category).length;
+              const unknownLeft = entries.filter((e) => rowCat(deviceId, e) === "unknown").length;
+              const approvable = buildApprovals(deviceId).length;
+              const unknownsInQueue = (queueData?.queue || []).filter((e) => e.device_id === deviceId && (!e.ai_category || e.ai_category === "unknown")).length;
+              return (
+                <div key={deviceId} className="flex flex-col gap-2 p-2.5 rounded bg-creamParchment border border-weatheredTaupe">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-mono text-xs font-bold text-peatCharcoal">{deviceId}</span>
+                    <span className="font-mono text-[10px] text-taupe-muted">
+                      {entries.length} lines to review · {changed} corrected by you · {unknownLeft} left unknown
+                      {unknownsInQueue > 0 && ` · ${unknownsInQueue} more need individual review below`}
+                    </span>
+                    <span className="flex-1" />
+                    <button disabled={busy} onClick={() => bulkDryRun(deviceId)} className="btn-ghost !py-1.5">
+                      Preview summary
+                    </button>
+                    <button disabled={busy || approvable === 0} onClick={() => bulkApprove(deviceId)} className="btn-primary !py-1.5">
+                      Approve reviewed ({approvable})
+                    </button>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="tbl">
+                      <thead>
+                        <tr>
+                          <th>Line</th>
+                          <th>Raw CLI</th>
+                          <th>CompilerAI proposal</th>
+                          <th>Your review (change if wrong)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {entries.map((e) => {
+                          const cat = rowCat(deviceId, e);
+                          const low = (e.ai_confidence ?? 0) < 0.7;
+                          const edited = cat !== e.ai_category;
+                          return (
+                            <tr key={rowKey(e)} className={edited ? "bg-meadowWash" : undefined}>
+                              <td className="font-mono text-[11px]">L{e.line_number}</td>
+                              <td className="font-mono text-[11px] text-peatCharcoal max-w-[320px] truncate" title={e.raw_line}>{e.raw_line}</td>
+                              <td className="font-mono text-[11px]">
+                                {e.ai_category} ({Math.round((e.ai_confidence ?? 0) * 100)}%)
+                                {low && <span className="ml-1 font-bold text-ochreHazard">eyes</span>}
+                              </td>
+                              <td>
+                                <select
+                                  className="input-field !w-56 !py-1 !text-xs font-mono"
+                                  value={cat}
+                                  onChange={(ev) => setRowCat(deviceId, e, ev.target.value)}
+                                >
+                                  {CATEGORIES.map((c) => (
+                                    <option key={c} value={c}>{c}{c === e.ai_category ? "  (proposal)" : ""}</option>
+                                  ))}
+                                </select>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <label className="flex items-center gap-2 font-mono text-[11px] text-peatCharcoal cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!!bulkReviewed[deviceId]}
+                      onChange={(ev) => setBulkReviewed((s) => ({ ...s, [deviceId]: ev.target.checked }))}
+                      className="w-4 h-4 accent-[#2F5D3A]"
+                    />
+                    <span>I reviewed every row above — unchanged lines count as human-reviewed too (low-confidence lines otherwise stay queued).</span>
+                  </label>
+                  {summary && (
+                    <div className="font-mono text-[11px] text-peatCharcoal leading-relaxed">
+                      {summary.headline}
+                      {Object.keys(summary.per_category || {}).length > 0 && (
+                        <span className="text-taupe-muted"> ({Object.entries(summary.per_category).map(([k, v]) => `${k}×${v}`).join(", ")})</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* Pattern clusters — one confirm covers N lines */}
       <section className="space-y-3">
@@ -242,7 +480,7 @@ export default function TrainingLoop() {
         <div className="label-md">Unrecognized Lines Awaiting Review (flat view)</div>
         {loading && <div className="font-mono text-xs text-taupe-muted">Loading queue…</div>}
         {(queueData?.queue || []).map((entry, i) => (
-          <QueueCard key={`${entry.device_id}-${entry.line_number}-${i}`} entry={entry} onConfirm={confirm} onReject={reject} busy={busy} />
+          <QueueCard key={`${entry.device_id}-${entry.line_number}-${i}`} entry={entry} onConfirm={confirm} onSkip={skip} busy={busy} />
         ))}
         {queueData?.count === 0 && (
           <div className="card p-6 font-mono text-xs text-taupe-muted text-center">
@@ -286,7 +524,7 @@ export default function TrainingLoop() {
                     <td className="font-mono text-[11px]">{m.category}</td>
                     <td>
                       {m.ai_suggested ? (
-                         <span className="badge bg-sprucePine text-[#FCF9F0]">AI + HUMAN</span>
+                          <span className="badge bg-sprucePine text-[#FCF9F0]">COMPILERAI + HUMAN</span>
                       ) : (
                         <span className="status-na">HUMAN</span>
                       )}
@@ -313,7 +551,113 @@ export default function TrainingLoop() {
           </div>
         </div>
         <div className="font-mono text-[10px] text-taupe-muted uppercase tracking-wider">
-          Deliberate v1 boundary: human-confirmed adaptive mapping cache — not autonomous ML. Auto-match threshold 0.82 similarity on normalized patterns.
+          Deliberate v1 boundary: human-confirmed adaptive mapping cache — not autonomous ML. Only exact
+          normalized-pattern hits auto-recognize; similar lines are proposals a human must confirm.
+        </div>
+      </section>
+
+      {/* Trained vendors — past unknown-vendor trains, revocable */}
+      <section className="space-y-3">
+        <div className="label-md flex items-center justify-between">
+          <span>Trained Vendors — what CompilerAI has learned (revocable)</span>
+          {(vendorData?.vendors?.length ?? 0) > 0 && (
+            <span className="font-mono text-[10px] text-taupe-muted">
+              {vendorData.vendors.length} vendor{(vendorData.vendors.length || 0) === 1 ? "" : "s"} known to CompilerAI
+            </span>
+          )}
+        </div>
+        <div className="card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th>Vendor</th>
+                  <th>Learned Mappings</th>
+                  <th>Devices Using It</th>
+                  <th>Trained By</th>
+                  <th>Last Trained</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {(vendorData?.vendors || []).map((v) => (
+                  <tr key={v.vendor}>
+                    <td className="font-mono text-[11px] font-bold text-peatCharcoal">{v.vendor}</td>
+                    <td className="font-mono text-[11px]">{v.mappings}×</td>
+                    <td className="font-mono text-[11px]">{(v.device_ids || []).join(", ") || "—"}</td>
+                    <td className="font-mono text-[11px]">{(v.reviewers || []).join(", ") || "—"}</td>
+                    <td className="font-mono text-[10px] text-taupe-muted">{v.last_trained ? new Date(v.last_trained).toLocaleString() : "—"}</td>
+                    <td>
+                      <button disabled={busy} onClick={() => revokeVendor(v.vendor)} className="font-mono text-[10px] uppercase font-bold text-terracottaRust hover:underline" title="Remove every learned mapping for this vendor — its lines become unknown again">
+                        revoke access
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {(vendorData?.vendors || []).length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="text-center font-mono text-xs text-taupe-muted py-6">
+                      No vendor trained yet — train an unseen-vendor config above and it appears here.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div className="font-mono text-[10px] text-taupe-muted uppercase tracking-wider">
+          Revoking removes CompilerAI&apos;s access to that vendor&apos;s syntax — its lines return to the queue as unknown. History is preserved below.
+        </div>
+      </section>
+
+      {/* Decision log — immutable human-review audit trail */}
+      <section className="space-y-3">
+        <div className="label-md flex items-center justify-between">
+          <span>CompilerAI Decision Log — who confirmed what (immutable)</span>
+          {(decisionData?.decisions?.length ?? 0) > 0 && (
+            <span className="font-mono text-[10px] text-taupe-muted">
+              {decisionData.decisions.length} latest decision{(decisionData.decisions.length || 0) === 1 ? "" : "s"}
+            </span>
+          )}
+        </div>
+        <div className="card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th>Line</th>
+                  <th>Decided Category</th>
+                  <th>CompilerAI Proposed</th>
+                  <th>Decision</th>
+                  <th>Reviewer</th>
+                  <th>At</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(decisionData?.decisions || []).map((d) => (
+                  <tr key={d.id}>
+                    <td className="font-mono text-[11px] text-peatCharcoal max-w-[280px] truncate" title={d.original_line}>{d.original_line}</td>
+                    <td className="font-mono text-[11px]">{d.category}</td>
+                    <td className="font-mono text-[10px] text-taupe-muted">{d.proposal_source || "—"}{d.proposal_confidence != null ? ` (${Math.round(d.proposal_confidence * 100)}%)` : ""}</td>
+                    <td>
+                      <span className={d.decision === "revoked" ? "status-fail" : d.decision.includes("correct") ? "status-error" : "status-pass"}>
+                        {d.decision}
+                      </span>
+                    </td>
+                    <td className="font-mono text-[11px]">{d.reviewer}</td>
+                    <td className="font-mono text-[10px] text-taupe-muted">{d.decided_at ? new Date(d.decided_at).toLocaleString() : "—"}</td>
+                  </tr>
+                ))}
+                {(decisionData?.decisions || []).length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="text-center font-mono text-xs text-taupe-muted py-6">
+                      No human decisions recorded yet — every confirm, correction, and revocation lands here.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
     </>

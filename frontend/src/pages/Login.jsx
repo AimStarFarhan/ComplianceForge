@@ -44,7 +44,7 @@ export default function Login() {
         {error && <div className="font-mono text-xs text-terracottaRust">{error}</div>}
         <button type="submit" className="btn-primary w-full justify-center !py-2.5">Sign in — Admin Role</button>
         <div className="font-mono text-[10px] leading-relaxed text-taupe-muted">
-          Only the named admin role can approve AI-suggested mappings (the human-in-the-loop gate).
+          Only the named admin role can approve CompilerAI-suggested mappings (the human-in-the-loop gate).
           Backend at <span className="font-mono text-sprucePine">{API}</span> — default demo credentials admin/admin.
         </div>
       </form>

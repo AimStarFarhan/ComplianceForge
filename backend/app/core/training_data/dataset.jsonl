@@ -1321,3 +1321,6 @@
 {"text": "threat-protection profile untrust-zone strict", "label": "zone_policy", "source": "train-device:admin"}
 {"text": "tls profile cipher enable des-cbc-md5 legacy", "label": "cryptography", "source": "train-device:admin"}
 {"text": "commit", "label": "unknown", "source": "train-device:admin"}
+{"text": "configure banner login \"Authorized access only. All activity is monitored.\"", "label": "banner", "source": "human-confirm:admin"}
+{"text": "configure event-log forward destination 10.99.50.10 minimum-severity informational", "label": "unknown", "source": "human-confirm:admin"}
+{"text": "log-alert notify-siem", "label": "unknown", "source": "human-confirm:admin"}

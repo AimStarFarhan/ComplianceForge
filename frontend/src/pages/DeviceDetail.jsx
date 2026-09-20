@@ -32,7 +32,7 @@ function RemediationCard({ f, toast }) {
                 <span className="block text-[10px] opacity-75">Native: {f.maps_to}</span>
               )}
               {f.source === "ai_suggested_human_confirmed" && (
-                <span className="ml-2 px-1.5 py-0.5 rounded bg-sprucePine text-[#FCF9F0] font-bold text-[10px]">AI + HUMAN-CONFIRMED SOURCE</span>
+                <span className="ml-2 px-1.5 py-0.5 rounded bg-sprucePine text-[#FCF9F0] font-bold text-[10px]">COMPILERAI + HUMAN-CONFIRMED</span>
               )}
             </span>
           </div>
@@ -77,25 +77,8 @@ export default function DeviceDetail() {
   const [framework, setFramework] = useState("cis");
   const { data, error, loading, reload } = useApi(`/devices/${encodeURIComponent(deviceId)}?framework=${framework}`, [deviceId, framework]);
   const [auditing, setAuditing] = useState(false);
-  const [training, setTraining] = useState(false);
   const [tab, setTab] = useState("json");
   const toast = useToast();
-
-  const trainDevice = async () => {
-    setTraining(true);
-    try {
-      const res = await api("/training/train-device", {
-        method: "POST",
-        body: { device_id: deviceId, confirmed_by: "admin" },
-      });
-      toast(`Vendor trained — ${res.trained_lines} mappings confirmed (${res.already_learned} already known). Run the audit now.`);
-      reload();
-    } catch (e) {
-      toast(`Training failed: ${e.message}`);
-    } finally {
-      setTraining(false);
-    }
-  };
 
   const runAudit = async () => {
     setAuditing(true);
@@ -236,10 +219,10 @@ export default function DeviceDetail() {
                 <span>Copy Runbook</span>
               </button>
               {data.vendor === "unseen_vendor" && !s && (
-                <button onClick={trainDevice} disabled={training} className="btn-primary !bg-ochreHazard !border-[#8A5A1C]">
+                <Link to="/console/training" className="btn-primary !bg-ochreHazard !border-[#8A5A1C]">
                   <span className="material-symbols-outlined text-[17px]">model_training</span>
-                  <span>{training ? "Training…" : "Train Vendor"}</span>
-                </button>
+                  <span>Review & Train in Queue</span>
+                </Link>
               )}
               <button onClick={runAudit} disabled={auditing} className="btn-primary">
                 <span className="material-symbols-outlined text-[17px]">{auditing ? "hourglass_top" : "play_arrow"}</span>

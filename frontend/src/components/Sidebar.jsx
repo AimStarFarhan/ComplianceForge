@@ -6,7 +6,7 @@ const VENDORS = [
   { name: "Cisco IOS", key: "cisco_ios" },
   { name: "JunOS", key: "juniper_srx" },
   { name: "SONiC NOS", key: "sonic" },
-  { name: "Unseen (AI)", key: "unseen_vendor" },
+  { name: "Unseen (CompilerAI)", key: "unseen_vendor" },
 ];
 
 export default function Sidebar() {
@@ -23,7 +23,7 @@ export default function Sidebar() {
 
   const nav = [
     { to: "/console", label: "Dashboard & Fleet", icon: "grid_view", end: true },
-    { to: "/console/training", label: "Training Loop", icon: "psychology", tag: "Adaptive AI" },
+    { to: "/console/training", label: "Training Loop", icon: "psychology", tag: "CompilerAI" },
     { to: "/console/devices", label: "Audits & Remediation", icon: "terminal" },
     { to: "/console/reports", label: "Reports & Evidence", icon: "verified" },
   ];
@@ -113,7 +113,7 @@ export default function Sidebar() {
 
         {/* Learned Mapping Cache */}
         <div className="space-y-1.5">
-          <div className="px-1 py-0.5 font-mono text-[10px] uppercase text-sageMuted tracking-wider">Learned Rule Cache</div>
+          <div className="px-1 py-0.5 font-mono text-[10px] uppercase text-sageMuted tracking-wider">CompilerAI Rule Cache</div>
           <div className="px-1 space-y-1 font-mono text-[11px] text-softSage">
             <div className="flex items-center justify-between">
               <span className="text-sageMuted">Human-confirmed mappings</span>
@@ -124,7 +124,7 @@ export default function Sidebar() {
               <span className="text-softSage font-bold">{training?.total_matches ?? 0}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sageMuted">AI-confirmed share</span>
+              <span className="text-sageMuted">CompilerAI-confirmed share</span>
               <span className="text-softSage font-bold">
                 {totalMappings ? `${Math.round(((training?.ai_confirmed ?? 0) / totalMappings) * 100)}%` : "—"}
               </span>

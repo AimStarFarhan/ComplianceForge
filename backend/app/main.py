@@ -135,6 +135,7 @@ def health():
         info, ds_size = {}, 0
     return {
         "status": "ok",
+        "ai_name": "CompilerAI",
         "ai_mode": mode,
         "ai_label": label,
         # legacy alias: older UIs/tests read "offline_heuristic"

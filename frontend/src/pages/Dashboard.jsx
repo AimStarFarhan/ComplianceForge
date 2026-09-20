@@ -194,6 +194,63 @@ export default function Dashboard() {
           ))}
         </div>
       </section>
+      {/* Audit history — every device that went through the audit tests */}
+      <section className="card p-5">
+        <div className="flex items-center gap-2.5 pb-3 border-b border-weatheredTaupe">
+          <span className="material-symbols-outlined text-sprucePine text-[22px]">history</span>
+          <div className="flex-1">
+            <span className="font-display text-sm font-bold text-peatCharcoal">Audit History — devices through the audit tests</span>
+            <span className="font-sans text-xs text-taupe-muted block">Newest run first · pass/fail per audit · provisional flags on CompilerAI-learned evidence</span>
+          </div>
+          {(data?.recent_audits?.length ?? 0) > 0 && (
+            <span className="font-mono text-[10px] text-taupe-muted">{data.recent_audits.length} latest runs</span>
+          )}
+        </div>
+        <div className="mt-3 overflow-x-auto">
+          <table className="tbl">
+            <thead>
+              <tr>
+                <th>Device</th>
+                <th>Vendor</th>
+                <th>Compliance</th>
+                <th>Pass / Fail</th>
+                <th>Queued</th>
+                <th>Ran</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {(data?.recent_audits || []).map((r) => (
+                <tr key={r.run_id}>
+                  <td className="font-mono text-[11px] font-bold text-peatCharcoal">
+                    {r.hostname || r.device_id}
+                    {r.is_unseen_vendor && <span className="ml-1.5 badge bg-ochreWash text-ochreHazard border border-ochreHazard/40">LEARNED</span>}
+                  </td>
+                  <td className="font-mono text-[11px] text-taupe-muted">{r.vendor_label || r.vendor}</td>
+                  <td className="font-display text-sm font-bold" style={{ color: (r.compliance_pct ?? 0) >= 80 ? "var(--pass)" : (r.compliance_pct ?? 0) >= 50 ? "var(--warn)" : "var(--fail)" }}>
+                    {r.compliance_pct ?? "—"}{r.compliance_pct != null && "%"}
+                  </td>
+                  <td className="font-mono text-[11px]"><span className="text-mutedMeadow font-bold">{r.pass_count} pass</span> / <span className="text-terracottaRust font-bold">{r.fail_count} fail</span></td>
+                  <td className="font-mono text-[11px] text-taupe-muted">{r.unparsed_count}</td>
+                  <td className="font-mono text-[10px] text-taupe-muted">{r.ran_at ? new Date(r.ran_at).toLocaleString() : "—"}</td>
+                  <td>
+                    <Link to={`/console/devices/${encodeURIComponent(r.device_id)}`} className="font-mono text-[10px] uppercase font-bold text-sprucePine hover:underline">
+                      open →
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+              {(data?.recent_audits || []).length === 0 && (
+                <tr>
+                  <td colSpan={7} className="text-center font-mono text-xs text-taupe-muted py-6">
+                    No audits run yet — ingest a config and run the first audit to start the history.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </>
   );
 }
