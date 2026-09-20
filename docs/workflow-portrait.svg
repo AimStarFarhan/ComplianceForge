@@ -1,0 +1,151 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="2010" viewBox="0 0 1200 2010" font-family="Segoe UI, Verdana, Arial, sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0E5A4E"/>
+    </marker>
+    <marker id="arrO" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#B8860B"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="2010" fill="#F7F2E7"/>
+
+  <!-- header -->
+  <rect x="0" y="0" width="1200" height="130" fill="#0C3B34"/>
+  <text x="600" y="52" text-anchor="middle" font-size="30" font-weight="bold" fill="#FCF9F0">ComplianceForge — AI-Driven Multi-Vendor</text>
+  <text x="600" y="88" text-anchor="middle" font-size="30" font-weight="bold" fill="#FCF9F0">Network Security Compliance Auditor</text>
+  <text x="600" y="116" text-anchor="middle" font-size="20" fill="#E8C86A">use the AI assistant — <tspan font-weight="bold">CompilerAI</tspan></text>
+
+  <!-- 1 START -->
+  <rect x="40" y="160" width="1120" height="150" rx="14" fill="#FFFFFF" stroke="#0E5A4E" stroke-width="2.5"/>
+  <rect x="40" y="160" width="1120" height="56" rx="14" fill="#0E5A4E"/>
+  <rect x="40" y="188" width="1120" height="28" fill="#0E5A4E"/>
+  <text x="600" y="197" text-anchor="middle" font-size="26" font-weight="bold" fill="#FFFFFF">1. START</text>
+  <circle cx="110" cy="263" r="24" fill="#EAF3EE" stroke="#0E5A4E" stroke-width="2.5"/>
+  <text x="110" y="272" text-anchor="middle" font-size="24" fill="#0E5A4E">&#8593;</text>
+  <text x="150" y="258" font-size="21" fill="#2B2B2B">Operator opens ComplianceForge console, uploads raw CLI config files (single or bulk)</text>
+  <rect x="150" y="270" width="220" height="30" rx="8" fill="#0C3B34"/>
+  <text x="260" y="292" text-anchor="middle" font-size="18" font-family="Consolas, monospace" fill="#FFFFFF">.cfg / .txt / .conf</text>
+  <line x1="600" y1="310" x2="600" y2="340" stroke="#0E5A4E" stroke-width="3" marker-end="url(#arr)"/>
+
+  <!-- 2 VENDOR AUTODETECT -->
+  <rect x="40" y="340" width="1120" height="176" rx="14" fill="#FFFFFF" stroke="#0E5A4E" stroke-width="2.5"/>
+  <rect x="40" y="340" width="1120" height="56" rx="14" fill="#0E5A4E"/>
+  <rect x="40" y="368" width="1120" height="28" fill="#0E5A4E"/>
+  <text x="600" y="377" text-anchor="middle" font-size="26" font-weight="bold" fill="#FFFFFF">2. VENDOR AUTODETECT</text>
+  <text x="80" y="432" font-size="21" fill="#2B2B2B">Syntax fingerprints identify the hardware vendor automatically</text>
+  <rect x="80" y="446" width="420" height="32" rx="8" fill="#EAF3EE" stroke="#0E5A4E" stroke-width="1.5"/>
+  <text x="290" y="469" text-anchor="middle" font-size="19" fill="#0C3B34">Cisco IOS &#183; Juniper SRX &#183; SONiC</text>
+  <rect x="520" y="446" width="330" height="32" rx="8" fill="#FFF1C9" stroke="#B8860B" stroke-width="1.5"/>
+  <text x="685" y="469" text-anchor="middle" font-size="19" font-weight="bold" fill="#8A6D1B">else &#8594; UNSEEN VENDOR</text>
+  <line x1="600" y1="516" x2="600" y2="546" stroke="#0E5A4E" stroke-width="3" marker-end="url(#arr)"/>
+
+  <!-- 3 PARSER -->
+  <rect x="40" y="546" width="1120" height="204" rx="14" fill="#FFFFFF" stroke="#0E5A4E" stroke-width="2.5"/>
+  <rect x="40" y="546" width="1120" height="56" rx="14" fill="#0E5A4E"/>
+  <rect x="40" y="574" width="1120" height="28" fill="#0E5A4E"/>
+  <text x="600" y="583" text-anchor="middle" font-size="26" font-weight="bold" fill="#FFFFFF">3. PARSER</text>
+  <text x="80" y="638" font-size="21" fill="#2B2B2B">Deterministic regex parser maps config into ONE vendor-neutral Security Baseline Model</text>
+  <rect x="80" y="652" width="150" height="30" rx="8" fill="#EAF3EE" stroke="#0E5A4E" stroke-width="1.5"/>
+  <text x="155" y="674" text-anchor="middle" font-size="18" fill="#0C3B34">management</text>
+  <rect x="242" y="652" width="90" height="30" rx="8" fill="#EAF3EE" stroke="#0E5A4E" stroke-width="1.5"/>
+  <text x="287" y="674" text-anchor="middle" font-size="18" fill="#0C3B34">auth</text>
+  <rect x="344" y="652" width="110" height="30" rx="8" fill="#EAF3EE" stroke="#0E5A4E" stroke-width="1.5"/>
+  <text x="399" y="674" text-anchor="middle" font-size="18" fill="#0C3B34">logging</text>
+  <rect x="466" y="652" width="70" height="30" rx="8" fill="#EAF3EE" stroke="#0E5A4E" stroke-width="1.5"/>
+  <text x="501" y="674" text-anchor="middle" font-size="18" fill="#0C3B34">acl</text>
+  <rect x="548" y="652" width="100" height="30" rx="8" fill="#EAF3EE" stroke="#0E5A4E" stroke-width="1.5"/>
+  <text x="598" y="674" text-anchor="middle" font-size="18" fill="#0C3B34">crypto</text>
+  <rect x="660" y="652" width="110" height="30" rx="8" fill="#EAF3EE" stroke="#0E5A4E" stroke-width="1.5"/>
+  <text x="715" y="674" text-anchor="middle" font-size="18" fill="#0C3B34">services</text>
+  <rect x="790" y="652" width="290" height="30" rx="8" fill="#0C3B34"/>
+  <text x="935" y="674" text-anchor="middle" font-size="17" font-family="Consolas, monospace" fill="#FFFFFF">e.g. ip ssh version 2</text>
+  <text x="80" y="716" font-size="21" fill="#2B2B2B">Anything unrecognized escapes via <tspan font-family="Consolas, monospace" font-size="19">unparsed_lines</tspan> into the Training Loop</text>
+  <line x1="600" y1="750" x2="600" y2="776" stroke="#0E5A4E" stroke-width="3" marker-end="url(#arr)"/>
+
+  <!-- decision diamond -->
+  <polygon points="600,776 750,866 600,956 450,866" fill="#0E5A4E"/>
+  <text x="600" y="860" text-anchor="middle" font-size="24" font-weight="bold" fill="#FFFFFF">Known</text>
+  <text x="600" y="890" text-anchor="middle" font-size="24" font-weight="bold" fill="#FFFFFF">or Unknown?</text>
+
+  <!-- branch elbows + labels -->
+  <path d="M450,866 H240 V1020" fill="none" stroke="#0E5A4E" stroke-width="3" marker-end="url(#arr)"/>
+  <path d="M750,866 H960 V1020" fill="none" stroke="#B8860B" stroke-width="3" marker-end="url(#arrO)"/>
+  <text x="345" y="1000" text-anchor="middle" font-size="19" font-weight="bold" fill="#0E5A4E">KNOWN PATH &#183; fast</text>
+  <text x="840" y="1000" text-anchor="middle" font-size="19" font-weight="bold" fill="#8A6D1B">UNKNOWN &#183; CompilerAI</text>
+
+  <!-- LEFT: AUDIT ENGINE -->
+  <rect x="40" y="1020" width="540" height="262" rx="14" fill="#FFFFFF" stroke="#0E5A4E" stroke-width="2.5"/>
+  <rect x="40" y="1020" width="540" height="56" rx="14" fill="#0E5A4E"/>
+  <rect x="40" y="1048" width="540" height="28" fill="#0E5A4E"/>
+  <text x="310" y="1057" text-anchor="middle" font-size="25" font-weight="bold" fill="#FFFFFF">AUDIT ENGINE</text>
+  <text x="70" y="1112" font-size="21" fill="#2B2B2B">CIS / NIST / STIG / ISO packs</text>
+  <text x="70" y="1142" font-size="21" fill="#2B2B2B">16–20 hand-verified rules/vendor</text>
+  <text x="70" y="1172" font-size="21" fill="#2B2B2B">Safe AST evaluator — never eval</text>
+  <text x="70" y="1202" font-size="21" fill="#2B2B2B">PASS / FAIL + severity + evidence</text>
+  <text x="70" y="1232" font-size="21" fill="#2B2B2B">Exact vendor-CLI remediation</text>
+  <line x1="310" y1="1282" x2="310" y2="1312" stroke="#0E5A4E" stroke-width="3" marker-end="url(#arr)"/>
+
+  <rect x="40" y="1312" width="540" height="64" rx="14" fill="#0E5A4E"/>
+  <text x="310" y="1353" text-anchor="middle" font-size="25" font-weight="bold" fill="#FFFFFF">COMPLIANCE % SCORE</text>
+  <line x1="310" y1="1376" x2="310" y2="1406" stroke="#0E5A4E" stroke-width="3" marker-end="url(#arr)"/>
+
+  <rect x="40" y="1406" width="540" height="196" rx="14" fill="#FFFFFF" stroke="#0E5A4E" stroke-width="2.5"/>
+  <rect x="40" y="1406" width="540" height="56" rx="14" fill="#0E5A4E"/>
+  <rect x="40" y="1434" width="540" height="28" fill="#0E5A4E"/>
+  <text x="310" y="1443" text-anchor="middle" font-size="25" font-weight="bold" fill="#FFFFFF">PDF REPORT</text>
+  <text x="70" y="1498" font-size="21" fill="#2B2B2B">Executive summary + findings table</text>
+  <text x="70" y="1528" font-size="21" fill="#2B2B2B">Remediation appendix</text>
+  <text x="70" y="1558" font-size="21" fill="#2B2B2B">Advisory-only disclaimer</text>
+
+  <!-- RIGHT: COMPILERAI TRAINING LOOP -->
+  <rect x="620" y="1020" width="540" height="356" rx="14" fill="#FFF6DE" stroke="#B8860B" stroke-width="3.5"/>
+  <rect x="620" y="1020" width="540" height="56" rx="14" fill="#8A6D1B"/>
+  <rect x="620" y="1048" width="540" height="28" fill="#8A6D1B"/>
+  <text x="890" y="1057" text-anchor="middle" font-size="23" font-weight="bold" fill="#FFFFFF">COMPILERAI TRAINING LOOP</text>
+  <rect x="985" y="1086" width="150" height="30" rx="15" fill="#B8860B"/>
+  <text x="1060" y="1108" text-anchor="middle" font-size="17" font-weight="bold" fill="#FFFFFF">FLAGSHIP</text>
+  <text x="650" y="1146" font-size="21" font-weight="bold" fill="#0C3B34">a. Unknown lines enter Queue +</text>
+  <text x="650" y="1174" font-size="21" font-weight="bold" fill="#0C3B34">CompilerAI proposal + confidence</text>
+  <text x="650" y="1202" font-size="19" fill="#5A5A5A">L1 exact cache &#8594; L2 trained model &#8594; L3 LLM fallback</text>
+  <line x1="650" y1="1216" x2="1130" y2="1216" stroke="#D8CFB8" stroke-width="2"/>
+  <text x="650" y="1244" font-size="21" font-weight="bold" fill="#0C3B34">b. HUMAN confirms / corrects</text>
+  <text x="650" y="1272" font-size="19" fill="#5A5A5A">AI never issues pass/fail verdicts</text>
+  <line x1="650" y1="1286" x2="1130" y2="1286" stroke="#D8CFB8" stroke-width="2"/>
+  <text x="650" y="1314" font-size="21" font-weight="bold" fill="#0C3B34">c. Confirmed patterns enter cache</text>
+  <text x="650" y="1342" font-size="19" fill="#5A5A5A">+ learning dataset for retraining</text>
+  <line x1="890" y1="1376" x2="890" y2="1406" stroke="#B8860B" stroke-width="3" marker-end="url(#arrO)"/>
+
+  <rect x="620" y="1406" width="540" height="196" rx="14" fill="#FFF6DE" stroke="#B8860B" stroke-width="3.5"/>
+  <rect x="620" y="1406" width="540" height="56" rx="14" fill="#8A6D1B"/>
+  <rect x="620" y="1434" width="540" height="28" fill="#8A6D1B"/>
+  <text x="890" y="1443" text-anchor="middle" font-size="23" font-weight="bold" fill="#FFFFFF">LOOP BACK — now KNOWN</text>
+  <text x="650" y="1498" font-size="21" fill="#2B2B2B">Re-ingest: every line auto-recognizes</text>
+  <text x="650" y="1528" font-size="21" fill="#2B2B2B">Full audit runs on the learned vendor</text>
+  <text x="650" y="1558" font-size="21" font-weight="bold" fill="#8A6D1B">Tagged COMPILERAI + HUMAN-CONFIRMED</text>
+  <path d="M620,1505 H600 V1180 H580" fill="none" stroke="#B8860B" stroke-width="3" stroke-dasharray="10,6" marker-end="url(#arrO)"/>
+
+  <!-- converge to dashboard -->
+  <path d="M310,1602 V1660" fill="none" stroke="#0E5A4E" stroke-width="3" marker-end="url(#arr)"/>
+  <path d="M890,1602 V1660" fill="none" stroke="#0E5A4E" stroke-width="3" marker-end="url(#arr)"/>
+
+  <!-- DASHBOARD + ANALYST -->
+  <rect x="40" y="1660" width="540" height="130" rx="14" fill="#FFFFFF" stroke="#0E5A4E" stroke-width="2.5"/>
+  <rect x="40" y="1660" width="540" height="52" rx="14" fill="#0E5A4E"/>
+  <rect x="40" y="1686" width="540" height="26" fill="#0E5A4E"/>
+  <text x="310" y="1695" text-anchor="middle" font-size="24" font-weight="bold" fill="#FFFFFF">DASHBOARD</text>
+  <text x="70" y="1740" font-size="20" fill="#2B2B2B">Fleet posture &#183; per-vendor rollup &#183; audit history</text>
+  <text x="70" y="1766" font-size="20" fill="#2B2B2B">Trained vendors record + revoke access</text>
+
+  <rect x="620" y="1660" width="540" height="130" rx="14" fill="#FFF6DE" stroke="#B8860B" stroke-width="3"/>
+  <rect x="620" y="1660" width="540" height="52" rx="14" fill="#8A6D1B"/>
+  <rect x="620" y="1686" width="540" height="26" fill="#8A6D1B"/>
+  <text x="890" y="1695" text-anchor="middle" font-size="22" font-weight="bold" fill="#FFFFFF">COMPILERAI ANALYST BOT</text>
+  <text x="650" y="1740" font-size="20" fill="#2B2B2B">Grounded Q&amp;A over any audit report</text>
+  <text x="650" y="1766" font-size="20" fill="#2B2B2B">What failed &#183; why &#183; how to fix</text>
+
+  <!-- footer -->
+  <rect x="0" y="1920" width="1200" height="90" fill="#0C3B34"/>
+  <text x="600" y="1958" text-anchor="middle" font-size="21" font-weight="bold" fill="#FCF9F0">FOOTER NOTE</text>
+  <text x="600" y="1986" text-anchor="middle" font-size="20" fill="#FCF9F0">Advisory-only remediation — zero blind auto-push &#183; Human-in-the-loop gate is the product.</text>
+</svg>

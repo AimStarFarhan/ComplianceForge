@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="880" viewBox="0 0 1600 880" font-family="Segoe UI, Verdana, Arial, sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5B7DB1"/>
+    </marker>
+    <marker id="arrB" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2E75B6"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1600" height="880" fill="#FFFFFF"/>
+
+  <!-- title -->
+  <text x="35" y="50" font-size="30" font-weight="bold" fill="#1F3864">Our Solution — End to End Workflow</text>
+  <rect x="1195" y="18" width="370" height="40" rx="20" fill="#EAF1FB" stroke="#B9CDF0" stroke-width="1.5"/>
+  <text x="1380" y="45" text-anchor="middle" font-size="17" fill="#1F3864">On-Demand Audit &#8594; Actionable Insights</text>
+
+  <!-- ======= COLUMN 1: INPUT (blue) ======= -->
+  <rect x="35" y="110" width="292" height="480" rx="14" fill="#D9E7FD"/>
+  <rect x="35" y="110" width="292" height="76" rx="14" fill="#2E75B6"/>
+  <rect x="35" y="150" width="292" height="36" fill="#2E75B6"/>
+  <text x="181" y="157" text-anchor="middle" font-size="22" font-weight="bold" fill="#FFFFFF">1. INPUT</text>
+  <circle cx="181" cy="238" r="30" fill="#FFFFFF" stroke="#2E75B6" stroke-width="3"/>
+  <text x="181" y="249" text-anchor="middle" font-size="30" font-weight="bold" fill="#2E75B6">&#8679;</text>
+  <circle cx="61" cy="298" r="5" fill="#2E75B6"/>
+  <text x="77" y="305" font-size="19" fill="#1F3864">Upload CLI configuration</text>
+  <text x="77" y="331" font-size="19" fill="#1F3864">file (max 2 MB)</text>
+  <circle cx="61" cy="376" r="5" fill="#2E75B6"/>
+  <text x="77" y="383" font-size="19" fill="#1F3864">Cisco &#183; Juniper SRX</text>
+  <text x="77" y="409" font-size="19" fill="#1F3864">SONiC supported</text>
+  <circle cx="61" cy="454" r="5" fill="#2E75B6"/>
+  <text x="77" y="461" font-size="19" fill="#1F3864">Any new vendor</text>
+  <text x="77" y="487" font-size="19" fill="#1F3864">welcomed as-is</text>
+
+  <!-- ======= COLUMN 2: PREPROCESSING (green) ======= -->
+  <rect x="343" y="110" width="292" height="480" rx="14" fill="#DFF2E3"/>
+  <rect x="343" y="110" width="292" height="76" rx="14" fill="#2F9E44"/>
+  <rect x="343" y="150" width="292" height="36" fill="#2F9E44"/>
+  <text x="489" y="157" text-anchor="middle" font-size="21" font-weight="bold" fill="#FFFFFF">2. PREPROCESSING</text>
+  <circle cx="489" cy="238" r="30" fill="#FFFFFF" stroke="#2F9E44" stroke-width="3"/>
+  <text x="489" y="249" text-anchor="middle" font-size="30" font-weight="bold" fill="#2F9E44">&#9881;</text>
+  <circle cx="369" cy="298" r="5" fill="#2F9E44"/>
+  <text x="385" y="305" font-size="19" fill="#1F3864">Parse CLI syntax,</text>
+  <text x="385" y="331" font-size="19" fill="#1F3864">detect vendor</text>
+  <circle cx="369" cy="376" r="5" fill="#2F9E44"/>
+  <text x="385" y="383" font-size="19" fill="#1F3864">Clean, normalize,</text>
+  <text x="385" y="409" font-size="19" fill="#1F3864">remove noise</text>
+  <circle cx="369" cy="454" r="5" fill="#2F9E44"/>
+  <text x="385" y="461" font-size="19" fill="#1F3864">Extract security</text>
+  <text x="385" y="487" font-size="19" fill="#1F3864">commands only</text>
+
+  <!-- ======= COLUMN 3: COMMON FORMAT (orange) ======= -->
+  <rect x="651" y="110" width="292" height="480" rx="14" fill="#FDEBD3"/>
+  <rect x="651" y="110" width="292" height="76" rx="14" fill="#E67E22"/>
+  <rect x="651" y="150" width="292" height="36" fill="#E67E22"/>
+  <text x="797" y="141" text-anchor="middle" font-size="20" font-weight="bold" fill="#FFFFFF">3. COMMON FORMAT</text>
+  <text x="797" y="165" text-anchor="middle" font-size="20" font-weight="bold" fill="#FFFFFF">CONVERSION</text>
+  <circle cx="797" cy="238" r="30" fill="#FFFFFF" stroke="#E67E22" stroke-width="3"/>
+  <text x="797" y="249" text-anchor="middle" font-size="28" font-weight="bold" fill="#E67E22">&#9783;</text>
+  <circle cx="677" cy="298" r="5" fill="#E67E22"/>
+  <text x="693" y="305" font-size="19" fill="#1F3864">Vendor CLI becomes</text>
+  <text x="693" y="331" font-size="19" fill="#1F3864">one standard baseline</text>
+  <circle cx="677" cy="376" r="5" fill="#E67E22"/>
+  <text x="693" y="383" font-size="19" fill="#1F3864">Security Baseline</text>
+  <text x="693" y="409" font-size="19" fill="#1F3864">Model (common shape)</text>
+  <circle cx="677" cy="454" r="5" fill="#E67E22"/>
+  <text x="693" y="461" font-size="19" fill="#1F3864">Values normalized,</text>
+  <text x="693" y="487" font-size="19" fill="#1F3864">context preserved</text>
+
+  <!-- ======= COLUMN 4: COMPLIANCE CHECK (purple) ======= -->
+  <rect x="959" y="110" width="292" height="480" rx="14" fill="#E8E3F7"/>
+  <rect x="959" y="110" width="292" height="76" rx="14" fill="#7C3AED"/>
+  <rect x="959" y="150" width="292" height="36" fill="#7C3AED"/>
+  <text x="1105" y="141" text-anchor="middle" font-size="19" font-weight="bold" fill="#FFFFFF">4. COMPLIANCE CHECK</text>
+  <text x="1105" y="165" text-anchor="middle" font-size="19" font-weight="bold" fill="#FFFFFF">&amp; AI ANALYSIS</text>
+  <circle cx="1105" cy="238" r="30" fill="#FFFFFF" stroke="#7C3AED" stroke-width="3"/>
+  <text x="1105" y="247" text-anchor="middle" font-size="20" font-weight="bold" fill="#7C3AED">AI</text>
+  <circle cx="985" cy="298" r="5" fill="#7C3AED"/>
+  <text x="1001" y="305" font-size="19" fill="#1F3864">Match CIS-style rules</text>
+  <text x="1001" y="331" font-size="19" fill="#1F3864">(16–20 per vendor)</text>
+  <circle cx="985" cy="376" r="5" fill="#7C3AED"/>
+  <text x="1001" y="383" font-size="19" fill="#1F3864">Detect missing and</text>
+  <text x="1001" y="409" font-size="19" fill="#1F3864">wrong configs</text>
+  <circle cx="985" cy="454" r="5" fill="#7C3AED"/>
+  <text x="1001" y="461" font-size="19" fill="#1F3864">CompilerAI labels</text>
+  <text x="1001" y="487" font-size="19" fill="#1F3864">unknowns (L1&#8594;L2&#8594;L3)</text>
+
+  <!-- ======= COLUMN 5: RESULTS (pink) ======= -->
+  <rect x="1267" y="110" width="292" height="480" rx="14" fill="#F8D7E3"/>
+  <rect x="1267" y="110" width="292" height="76" rx="14" fill="#D6336C"/>
+  <rect x="1267" y="150" width="292" height="36" fill="#D6336C"/>
+  <text x="1413" y="141" text-anchor="middle" font-size="20" font-weight="bold" fill="#FFFFFF">5. RESULTS</text>
+  <text x="1413" y="165" text-anchor="middle" font-size="20" font-weight="bold" fill="#FFFFFF">&amp; REPORTING</text>
+  <circle cx="1413" cy="238" r="30" fill="#FFFFFF" stroke="#D6336C" stroke-width="3"/>
+  <text x="1413" y="249" text-anchor="middle" font-size="28" font-weight="bold" fill="#D6336C">&#10003;</text>
+  <circle cx="1293" cy="298" r="5" fill="#D6336C"/>
+  <text x="1309" y="305" font-size="19" fill="#1F3864">Report per device,</text>
+  <text x="1309" y="331" font-size="19" fill="#1F3864">severity-ranked</text>
+  <circle cx="1293" cy="376" r="5" fill="#D6336C"/>
+  <text x="1309" y="383" font-size="19" fill="#1F3864">Human-approved</text>
+  <text x="1309" y="409" font-size="19" fill="#1F3864">remediation CLI</text>
+  <circle cx="1293" cy="454" r="5" fill="#D6336C"/>
+  <text x="1309" y="461" font-size="19" fill="#1F3864">Dashboard + audit</text>
+  <text x="1309" y="487" font-size="19" fill="#1F3864">history timeline</text>
+
+  <!-- chevrons between columns -->
+  <polygon points="325,338 345,350 325,362" fill="#7A8AA0"/>
+  <polygon points="633,338 653,350 633,362" fill="#7A8AA0"/>
+  <polygon points="941,338 961,350 941,362" fill="#7A8AA0"/>
+  <polygon points="1249,338 1269,350 1249,362" fill="#7A8AA0"/>
+
+  <!-- loop arrows: step5 down into feedback bar, bar back up to step2 -->
+  <path d="M1413,590 C1413,606 1413,608 1413,622" fill="none" stroke="#2E75B6" stroke-width="4" marker-end="url(#arrB)"/>
+  <path d="M600,624 C600,606 545,598 489,594" fill="none" stroke="#2E75B6" stroke-width="4" marker-end="url(#arrB)"/>
+
+  <!-- feedback bar -->
+  <rect x="35" y="624" width="1524" height="126" rx="14" fill="#E7F0FE" stroke="#2E75B6" stroke-width="2.5"/>
+  <circle cx="112" cy="687" r="34" fill="#FFFFFF" stroke="#2E75B6" stroke-width="3"/>
+  <text x="112" y="700" text-anchor="middle" font-size="36" font-weight="bold" fill="#2E75B6">&#9881;</text>
+  <text x="168" y="672" font-size="23" font-weight="bold" fill="#1F3864">Feedback &amp; Training Queue — CompilerAI Continuous Learning</text>
+  <text x="168" y="702" font-size="19" fill="#1F3864">Unknown lines &#8594; CompilerAI proposes &#8594; human confirms &#8594; vendor auto-recognizes next upload</text>
+  <text x="168" y="728" font-size="19" fill="#1F3864">L1 exact cache &#8594; L2 trained model &#8594; L3 LLM fallback &#183; every audit improves accuracy</text>
+
+  <!-- bottom strip -->
+  <rect x="35" y="780" width="1524" height="60" rx="30" fill="#EAF1FB"/>
+  <text x="797" y="818" text-anchor="middle" font-size="20" fill="#1F3864">Continuous Learning Cycle &#160;&#160;|&#160;&#160; Improving Accuracy &#160;&#160;|&#160;&#160; Extensible to New Vendors</text>
+</svg>
