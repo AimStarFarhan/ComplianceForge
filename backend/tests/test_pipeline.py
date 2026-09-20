@@ -233,14 +233,16 @@ def test_full_api_flow(client, auth_headers):
         json={
             "example_line": "ip ssh time-out 90",
             "category": "ssh_policy",
-            "confirmed_by": "admin",
-            "ai_suggested": True,
-            "ai_confidence": 0.55,
+            # forged identity fields: the server must ignore these and use the JWT
+            "confirmed_by": "mallory",
+            "ai_suggested": False,
+            "ai_confidence": 0.99,
             "vendor_hint": "cisco_ios",
         },
         headers=auth_headers,
     )
     assert r.status_code == 200, r.text
+    assert r.json()["mapping"]["confirmed_by"] == "admin"
 
     # similar line should now auto-match without re-asking
     r = client.post(
