@@ -37,3 +37,15 @@ backend/complianceforge_demo.db
 backend/verify_final.db
 
 .vercel
+
+# Local working notes & slide assets (kept locally, never pushed)
+/SWITCH_CONTEXT.md
+/PROJECT_ANALYSIS.md
+/PROJECT_FULL_ANALYSIS.md
+/PRESENTATION_SCRIPT.md
+/login.json
+/demo/sample_report_noncompliant.pdf
+docs/workflow-*.svg
+docs/workflow-*.png
+docs/architecture-*.svg
+docs/architecture-*.png
