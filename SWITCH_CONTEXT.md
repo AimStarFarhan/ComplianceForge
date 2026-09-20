@@ -134,6 +134,109 @@ Pending (P0 order):
 3. [AGENT, quick] `git commit` all below.
 4. P1: quality guards visible, model card + dataset stats page, README 1-pager update.
 
+## 15. SESSION RESUME — open a new session and paste this whole section
+
+Date: 2026-09-19/20 (late night). User said "still fixes to do, continue tomorrow."
+No briefing needed beyond this file.
+
+### Git state (verify first with `git status --short`)
+- On `main` (PR #1 merged: 11339f8). The entire 7-item trust-hardening work below
+  is UNCOMMITTED on top of main: 22 modified + 3 new files
+  (`backend/app/core/training_data/holdout.jsonl`, `backend/tests/conftest.py`,
+  `backend/tests/test_trust.py`). `login.json` untracked (leave it).
+- Serving model: v4 (acc 0.8496), 13 versions in metadata. Dataset 1,323 rows.
+  Suite: 36/36 green (`cd backend && python -m pytest tests -q`).
+
+### What was built this session (all in working tree, tested)
+1. `rule_cache.py`: strict vendor isolation (no cross-vendor fallback), no
+   250-char truncation (Text column), COMMAND_TEMPLATES + extract_slots
+   (secrets redacted) + value_drift, confirm() stores server provenance.
+2. `models/mapping.py`: ProposalRecord append-only table; CommandMapping +
+   slots_json/proposal_source/proposal_confidence/model_version/last_reviewer.
+   `models/finding.py`: provenance_json. `db.py`: _ensure_columns migration.
+3. `routes_training.py`: ConfirmRequest WITHOUT identity fields (JWT sub used);
+   server recomputes proposal; decision log; GET /training/decisions;
+   train-device = explicit approvals + unparsed-only + unknown rejected +
+   low-conf needs human_reviewed + dry_run summary; retrain rate-limited 5/10min.
+4. `trained_classifier.py`: candidates never touch current_version; frozen
+   163-row holdout.jsonl (strided); overall + per-category (ssh_policy, mgmt)
+   gates; atomic promote; sha256 recorded + verified on load.
+   v14 live test REJECTED on per-category gates (4 ambiguous rows) — keep it
+   that way; serving v4 stands. Do NOT manually promote; the rejection is the story.
+5. `routes_audit.py` + `baseline_inference.py`: per-line provenance, finding
+   provenance {adapter, mapping_ids, reviewers}, summary.provisional +
+   confidence_note; infer takes vendor_hint (no more "any" leak).
+6. `auth.py`: refuses default creds without CF_DEV_ALLOW_DEFAULTS=1
+   (conftest.py + launch.bat set it). `ai_classifier.py`: OpenAI→OpenAI /
+   Anthropic→Anthropic dispatch fixed (_classify_openai was dead code).
+7. `tests/test_trust.py` (12 tests) + conftest prune helper + isolated dataset
+   fixture; test_model/test_pipeline/test_security updated to new contracts.
+   Frontend: TrainingLoop bulk dry-run/approve panel + no forged fields;
+   DeviceDetail/UploadIngest one-click → queue links; 0.82-similarity claims removed.
+8. README + this file updated. Demo-fixture rows appended to dataset.jsonl by
+   verification scripts were REVERTED (keep demo out of training data).
+
+### Known remaining fixes / next actions (user: "still fixes, tomorrow")
+- [ ] Commit trust work: branch `feat/trust-hardening` → 3-4 grouped commits
+  (backend trust, promotion flow, tests, frontend+docs) → push → PR → merge.
+  Follow skills/committing-changes (feature branch + PR, never push main).
+- [ ] Docker live run still blocked (no daemon on dev box): `docker compose up
+  --build` + unseen loop once. Static review already passed.
+- [ ] 30-min label review: boundary rows (logging/syslog/auth) still the
+  accuracy drag; 5-fold CV ~0.66 vs holdout ~0.80 — thin classes qualitative.
+- [ ] Optional P1: decisions-log UI section in TrainingLoop; PDF report
+  provenance appendix; grow holdout as dataset grows (currently 163).
+- [ ] Scratch scripts live OUTSIDE repo (do not commit):
+  C:\Users\FARHAN~1\AppData\Local\Temp\opencode\audit_all.py,
+  verify_trust.py, diagnose.py, ablate.py, cvtest.py, make_holdout.py,
+  backfill.py, rebuild.py, diff_stig.py. Re-run backfill.py after any
+  metadata reset. Friend STIG sources: Downloads/iosxe-ansible,
+  Downloads/junos-ansible, Downloads/U_Cisco_IOS-XE_Switch_Y26M04_STIG.
+- [ ] Test-hygiene rules learned: shared test_cf.db persists — trust tests use
+  unique device ids + fixture cleanup; retrain tests must prune candidates
+  above pre-existing MAX (never above serving — that deleted committed v5-v13
+  once); trust API tests redirect DATASET_PATH to tmp.
+
+### Resume commands
+```powershell
+cd C:\Users\Farhan` Ali\Desktop\complianceforge   # backtick-escapes space if needed
+git status --short --branch
+cd backend; python -m pytest tests -q   # expect 36 passed
+python ..\..\FARHAN~1\AppData\Local\Temp\opencode\verify_trust.py  # full loop
+```
+
+## 14. Trust hardening session (ChatGPT audit → implemented, all green)
+
+ChatGPT Plus adversarial audit returned a 7-item trust list; ALL implemented on
+top of main (uncommitted — say the word to commit):
+1. Cache isolation: find_by_pattern never falls back cross-vendor; patterns no
+   longer truncated (Text column + pg migration); per-command typed slots
+   (COMMAND_TEMPLATES, secrets redacted) with value_drift reporting; slots feed
+   baseline inference (ssh_version, min_length).
+2. Auditable confirmations: confirmed_by/ai_* removed from request bodies;
+   reviewer from JWT; server recomputes proposal; every decision appends
+   ProposalRecord (GET /training/decisions); corrections append, never rewrite.
+3. Bulk training: explicit approvals only (line_number+raw_line vs unparsed set),
+   unparsed-only, unknown always rejected, low-conf requires human_reviewed,
+   dry_run summary ("N lines across M patterns"); UI: TrainingLoop bulk panel,
+   DeviceDetail/UploadIngest one-click → queue review links.
+4. Real promotion: candidates never touch current_version; immutable 163-row
+   holdout.jsonl (strided, frozen, committed); overall + per-category
+   (ssh_policy, mgmt_protocol) gates; atomic single-write promote; v14 live test
+   REJECTED on per-category gates (4 ambiguous rows) while serving v4 — gates work.
+5. Evidence adapter: category routes into reviewed extractor; findings carry
+   provenance {adapter, mapping_ids, reviewers}; audits flag provisional +
+   confidence_note when AI-derived/unresolved remain.
+6. Hardening: startup refuses default creds without CF_DEV_ALLOW_DEFAULTS=1
+   (conftest sets it; launch.bat sets it); retrain rate-limited 5/10min;
+   OpenAI→OpenAI / Anthropic→Anthropic dispatch fixed (_classify_openai was dead);
+   sha256 recorded + verified on every artifact load.
+7. Tests: 36/36 green (12 new test_trust.py + dev-defaults test). Retrain tests
+   prune their candidate artifacts; trust API tests use isolated dataset file.
+   Serving: v4 (0.8496). Fresh-DB verify: 12 unparsed → forged confirm attributed
+   admin → dry-run → 11 trained → 12/12 recognized → 16 findings all provenanced →
+   provisional → PDF.
+
 P1 (after P0 green): quality guards visible (low-confidence stays queued, disputed patterns excluded, thin-category warnings), model card + dataset stats page/doc, README/ARCHITECTURE 1-pager update.
 OUT until after submission: LLM fine-tuning, generative models, GPU, live SSH polling, auto-remediation push, Postgres/Redis/K8s.
 
