@@ -26,6 +26,17 @@ def _dev_defaults_allowed() -> bool:
     return os.environ.get("CF_DEV_ALLOW_DEFAULTS", "0") == "1"
 
 
+def demo_open() -> bool:
+    """Public-demo escape hatch (judge/demo links).
+
+    OFF by default. Set CF_DEMO_OPEN=1 ONLY on a throwaway demo deployment
+    where anyone with the link may ingest, audit, and train (every demo
+    action is still attributed to the 'demo-judge' reviewer in the decision
+    log). Never enable on infrastructure holding real configs.
+    """
+    return os.environ.get("CF_DEMO_OPEN", "0") == "1"
+
+
 def _require_env(name: str, dev_default: str) -> str:
     value = os.environ.get(name, "")
     if value:
@@ -68,6 +79,8 @@ def issue_token(username: str = ADMIN_USER) -> str:
 
 def verify_token(creds: HTTPAuthorizationCredentials | None = Depends(_security)) -> dict:
     if creds is None:
+        if demo_open():
+            return {"sub": "demo-judge", "role": "admin"}
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Missing bearer token")
     try:
         payload = jwt.decode(creds.credentials, SECRET, algorithms=[ALGORITHM])

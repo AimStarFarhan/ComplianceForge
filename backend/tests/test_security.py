@@ -119,3 +119,21 @@ def test_dev_defaults_allowed_with_flag():
         assert auth_mod.login("admin", "wrong") is None
     finally:
         importlib.reload(auth_mod)
+
+
+def test_demo_open_gate(monkeypatch):
+    # default: closed — anonymous API calls are rejected
+    import app.api.auth as auth_mod
+    from fastapi import HTTPException
+    monkeypatch.delenv("CF_DEMO_OPEN", raising=False)
+    assert auth_mod.demo_open() is False
+    try:
+        auth_mod.verify_token(None)
+        raise AssertionError("must reject anonymous without demo flag")
+    except HTTPException as exc:
+        assert exc.status_code == 401
+    # flag on: anonymous calls pass as the demo reviewer (judge links)
+    monkeypatch.setenv("CF_DEMO_OPEN", "1")
+    assert auth_mod.demo_open() is True
+    who = auth_mod.verify_token(None)
+    assert who["role"] == "admin" and who["sub"] == "demo-judge"

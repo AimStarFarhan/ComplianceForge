@@ -136,6 +136,7 @@ def health():
     return {
         "status": "ok",
         "ai_name": "CompilerAI",
+        "demo_open": auth.demo_open(),
         "ai_mode": mode,
         "ai_label": label,
         # legacy alias: older UIs/tests read "offline_heuristic"
