@@ -68,11 +68,45 @@ class Base(DeclarativeBase):
     pass
 
 
+def _ensure_columns() -> None:
+    """Lightweight additive migration for existing databases.
+
+    create_all() never alters tables that already exist, so columns added to
+    models after first deploy (slots_json, provenance_json, proposal tables
+    excluded -- new tables ARE created by create_all) must be added here.
+    Works on SQLite and Postgres; ignores "already exists" errors.
+    """
+    from sqlalchemy import text
+
+    additions = [
+        ("command_mappings", "slots_json", "TEXT"),
+        ("command_mappings", "proposal_source", "VARCHAR(64)"),
+        ("command_mappings", "proposal_confidence", "FLOAT"),
+        ("command_mappings", "model_version", "INTEGER"),
+        ("command_mappings", "last_reviewer", "VARCHAR(128)"),
+        ("findings", "provenance_json", "TEXT"),
+    ]
+    with engine.begin() as conn:
+        for table, column, ddl in additions:
+            try:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}"))
+            except Exception:
+                pass  # column already exists (or DB is fresh -- create_all covers it)
+        # pattern was VARCHAR(255) with app-side truncation: widen on Postgres
+        # (SQLite ignores VARCHAR widths, so dev DBs need nothing).
+        if engine.dialect.name != "sqlite":
+            try:
+                conn.execute(text("ALTER TABLE command_mappings ALTER COLUMN pattern TYPE TEXT"))
+            except Exception:
+                pass
+
+
 def init_db() -> None:
     """Import models so tables register, then create-all (idempotent)."""
     from app.models import device, finding, mapping  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
+    _ensure_columns()
 
 
 def get_db():

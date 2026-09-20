@@ -47,5 +47,9 @@ class Finding(Base):
     source: Mapped[str] = mapped_column(String(32), default="built_in")  # built_in | ai_suggested_human_confirmed
     confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
     category: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # immutable human-review provenance for AI-derived findings (JSON):
+    # {adapter, mappings: [{mapping_id, reviewer, proposal_source,
+    #   proposal_confidence, decided_at}]}. Empty for built_in findings.
+    provenance_json: Mapped[str] = mapped_column(Text, default="{}")
 
     run: Mapped[AuditRun] = relationship(back_populates="findings")

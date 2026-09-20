@@ -4,28 +4,43 @@ Design (per SWITCH_CONTEXT locked architecture):
   - Dataset is the source of truth (training_data/dataset.jsonl, versioned,
     correctable). Runtime is a fixed-size model file (~100KB-5MB, constant
     whether 1k or 100k examples). Storage O(model size), not O(unknowns).
-  - Updates are accuracy-gated + rollbackable: retrain does an 80/20
-    stratified split and promotes only if accuracy >= current - 0.02.
+  - Promotion is REAL and atomic: candidates train WITHOUT touching
+    current_version, then candidate and incumbent are scored on ONE IMMUTABLE
+    holdout set (training_data/holdout.jsonl, frozen). Promotion happens in a
+    single metadata write only if the overall gate (acc >= current - 0.02)
+    AND per-category gates (no material F1 drop on guarded categories) pass.
+    A below-threshold candidate never becomes the active model, even briefly.
+  - Rollback points current_version at any existing artifact (explicit human
+    action, always allowed).
   - Interface is swappable: predict(text) -> (category, confidence) so a
     future MiniLM/SetFit upgrade is drop-in.
 
 Artifact layout (model_artifacts/):
   model_v{N}.pkl   pickle {vectorizer, clf, labels, version}
   metadata.json    {current_version, versions: [{version, trained_at,
-                   n_examples, accuracy, per_category_f1, model_file, size_bytes}]}
+                   n_examples, accuracy, per_category_f1, holdout_accuracy,
+                   holdout_f1, sha256, status, model_file, size_bytes}]}
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 from datetime import datetime, timezone
 from pathlib import Path
 
 MODEL_DIR = Path(__file__).parent / "model_artifacts"
 DATASET_PATH = Path(__file__).parent / "training_data" / "dataset.jsonl"
+HOLDOUT_PATH = Path(__file__).parent / "training_data" / "holdout.jsonl"
 METADATA_PATH = MODEL_DIR / "metadata.json"
 
 CONFIDENCE_THRESHOLD = 0.7  # below this, L2 abstains -> L3 fallback
+
+# Promotion gates (measured on the immutable holdout, candidate vs incumbent).
+GATE_TOLERANCE = 0.02  # overall accuracy may not drop more than this
+# Guarded categories: a material F1 regression here rejects the candidate
+# even if overall accuracy passes (averages hide per-class damage).
+GATED_CATEGORIES = {"ssh_policy": 0.05, "management_protocol": 0.05}
 
 _cache: dict = {}
 
@@ -37,6 +52,29 @@ def _load_metadata() -> dict:
         except (json.JSONDecodeError, OSError):
             return {}
     return {}
+
+
+def _sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _verify_sha256(path: Path, expected: str | None) -> None:
+    """Refuse to unpickle an artifact whose hash doesn't match metadata.
+
+    Model files are privileged: only the training job writes them. A hash
+    mismatch means tampering or corruption -- fail closed, never load.
+    Entries written before hashing existed (no sha256 recorded) load with
+    no verification (legacy path, logged by callers that care).
+    """
+    if not expected:
+        return
+    actual = _sha256(path)
+    if actual != expected:
+        raise ValueError(f"Artifact {path.name} failed integrity check (sha256 mismatch) -- refusing to load")
 
 
 def get_model_info() -> dict:
@@ -52,6 +90,9 @@ def get_model_info() -> dict:
                 "n_examples": v.get("n_examples", 0),
                 "accuracy": v.get("accuracy"),
                 "per_category_f1": v.get("per_category_f1", {}),
+                "holdout_accuracy": v.get("holdout_accuracy"),
+                "holdout_f1": v.get("holdout_f1", {}),
+                "status": v.get("status", "serving"),
                 "model_file": v.get("model_file"),
                 "size_bytes": v.get("size_bytes", 0),
                 "available_versions": [x.get("version") for x in versions],
@@ -140,6 +181,7 @@ def _load_bundle(version: int | None = None):
     path = MODEL_DIR / entry["model_file"]
     if not path.exists():
         return None
+    _verify_sha256(path, entry.get("sha256"))
     key = f"v{version}"
     if key not in _cache:
         with open(path, "rb") as f:
@@ -172,12 +214,55 @@ def predict(text: str, version: int | None = None) -> tuple[str, float]:
         return "unknown", 0.0
 
 
-def train_and_save(dataset_path: Path | None = None) -> dict:
-    """Train TF-IDF+LogReg on 80/20 stratified split, save next version.
+def load_holdout() -> list[dict]:
+    """The immutable promotion set. Returns [] if not created yet."""
+    if not HOLDOUT_PATH.exists():
+        return []
+    rows = []
+    with open(HOLDOUT_PATH, encoding="utf-8") as f:
+        for raw in f:
+            raw = raw.strip()
+            if raw:
+                try:
+                    rows.append(json.loads(raw))
+                except (json.JSONDecodeError, ValueError):
+                    continue
+    return rows
 
-    Always saves (script path). The accuracy gate (>= current - 0.02) is
-    enforced by the retrain API; this function reports metrics so the caller
-    can decide. Returns the new version entry.
+
+def holdout_identities() -> set[tuple[str, str]]:
+    """(normalized pattern, label) pairs excluded from training."""
+    from app.core.rule_cache import normalize_pattern
+
+    return {(normalize_pattern(r["text"]), r["label"]) for r in load_holdout()}
+
+
+def score_on_holdout(bundle, holdout: list[dict] | None = None) -> dict:
+    """Score a loaded bundle on the immutable holdout (never trained on)."""
+    from sklearn.metrics import accuracy_score, f1_score
+
+    holdout = holdout if holdout is not None else load_holdout()
+    if not holdout:
+        return {"accuracy": None, "per_category_f1": {}, "n_holdout": 0}
+    texts = [r["text"] for r in holdout]
+    truth = [r["label"] for r in holdout]
+    vec = bundle["vectorizer"].transform(texts)
+    pred = bundle["clf"].predict(vec)
+    acc = round(float(accuracy_score(truth, pred)), 4)
+    classes = sorted(set(truth))
+    try:
+        scores = f1_score(truth, pred, labels=classes, average=None, zero_division=0)
+        f1_per = {c: round(float(s), 3) for c, s in zip(classes, scores)}
+    except Exception:
+        f1_per = {}
+    return {"accuracy": acc, "per_category_f1": f1_per, "n_holdout": len(holdout)}
+def train_and_save(dataset_path: Path | None = None) -> dict:
+    """Train TF-IDF+LogReg as a CANDIDATE. Never touches current_version
+    (except when no model exists yet, i.e. first boot).
+
+    The immutable holdout rows are EXCLUDED from training. Promotion is a
+    separate atomic step (promote_candidate) that scores candidate vs
+    incumbent on the holdout. Returns the new version entry.
     """
     from sklearn.feature_extraction.text import TfidfVectorizer
     from sklearn.linear_model import LogisticRegression
@@ -185,17 +270,25 @@ def train_and_save(dataset_path: Path | None = None) -> dict:
     from sklearn.model_selection import train_test_split
     import pickle
 
+    from app.core.rule_cache import normalize_pattern
+
     ds = Path(dataset_path) if dataset_path else DATASET_PATH
+    excluded = holdout_identities()
     texts: list[str] = []
     labels: list[str] = []
+    skipped_holdout = 0
     with open(ds, encoding="utf-8") as f:
         for raw in f:
             raw = raw.strip()
             if not raw:
                 continue
             obj = json.loads(raw)
-            texts.append(str(obj["text"]))
-            labels.append(str(obj["label"]))
+            text, label = str(obj["text"]), str(obj["label"])
+            if (normalize_pattern(text), label) in excluded:
+                skipped_holdout += 1
+                continue
+            texts.append(text)
+            labels.append(label)
 
     if len(texts) < 40:
         raise ValueError(f"Dataset too small to train: {len(texts)} rows")
@@ -234,22 +327,116 @@ def train_and_save(dataset_path: Path | None = None) -> dict:
     with open(MODEL_DIR / fname, "wb") as f:
         pickle.dump(bundle, f)
     size = (MODEL_DIR / fname).stat().st_size
+    digest = _sha256(MODEL_DIR / fname)
+    holdout_score = score_on_holdout(bundle)
     entry = {
         "version": nxt,
         "trained_at": datetime.now(timezone.utc).isoformat(),
         "n_examples": len(texts),
+        "n_holdout_excluded": skipped_holdout,
         "accuracy": acc,
         "per_category_f1": f1_per,
+        "holdout_accuracy": holdout_score["accuracy"],
+        "holdout_f1": holdout_score["per_category_f1"],
+        "n_holdout": holdout_score["n_holdout"],
+        "sha256": digest,
+        "status": "candidate",
         "model_file": fname,
         "size_bytes": size,
     }
     versions.append(entry)
     meta["versions"] = versions
-    meta["current_version"] = nxt
+    if not meta.get("current_version"):
+        # first-ever model: nothing to gate against
+        meta["current_version"] = nxt
+        entry["status"] = "serving"
     with open(METADATA_PATH, "w", encoding="utf-8") as f:
         json.dump(meta, f, indent=2)
     _cache.clear()
     return entry
+
+
+def promote_candidate(version: int) -> dict:
+    """Atomically promote a candidate after holdout gating (single write).
+
+    Scores candidate AND incumbent on the immutable holdout. Promotes only if
+    overall accuracy >= incumbent - GATE_TOLERANCE AND no guarded category
+    F1 drops beyond its tolerance. Otherwise marks the candidate rejected and
+    leaves current_version untouched. Returns a verdict dict.
+    """
+    meta = _load_metadata()
+    versions = meta.get("versions", [])
+    cand = next((v for v in versions if v.get("version") == version), None)
+    if cand is None:
+        raise ValueError(f"Model version {version} not found")
+    current_version = meta.get("current_version", 0)
+    if current_version == version:
+        return {"promoted": True, "already_serving": True, "model": cand}
+
+    def _holdout_metrics(v: dict) -> dict:
+        if v.get("holdout_accuracy") is not None:
+            return {
+                "accuracy": v["holdout_accuracy"],
+                "f1": v.get("holdout_f1", {}) or {},
+            }
+        bundle = _load_bundle(v.get("version"))
+        if bundle is None:
+            raise ValueError(f"Artifact for version {v.get('version')} missing")
+        s = score_on_holdout(bundle)
+        v["holdout_accuracy"] = s["accuracy"]
+        v["holdout_f1"] = s["per_category_f1"]
+        v["n_holdout"] = s["n_holdout"]
+        return {"accuracy": s["accuracy"], "f1": s["per_category_f1"]}
+
+    incumbent = next((v for v in versions if v.get("version") == current_version), None)
+    if incumbent is None or current_version == 0:
+        # nothing to gate against: promote directly
+        cand["status"] = "serving"
+        meta["current_version"] = version
+        with open(METADATA_PATH, "w", encoding="utf-8") as f:
+            json.dump(meta, f, indent=2)
+        _cache.clear()
+        return {"promoted": True, "model": cand, "reason": "no incumbent; first model"}
+
+    cand_m = _holdout_metrics(cand)
+    inc_m = _holdout_metrics(incumbent)
+    reasons = []
+    c_acc, i_acc = cand_m["accuracy"], inc_m["accuracy"]
+    if c_acc is None or i_acc is None:
+        reasons.append("holdout unavailable; refusing to promote blind")
+    elif c_acc < i_acc - GATE_TOLERANCE:
+        reasons.append(f"overall gate: candidate holdout {c_acc} < incumbent {i_acc} - {GATE_TOLERANCE}")
+    for cat, tol in GATED_CATEGORIES.items():
+        cf = (cand_m["f1"] or {}).get(cat)
+        inf = (inc_m["f1"] or {}).get(cat)
+        if cf is not None and inf is not None and cf < inf - tol:
+            reasons.append(f"per-category gate: {cat} F1 {cf} < incumbent {inf} - {tol}")
+    if reasons:
+        cand["status"] = "rejected"
+        with open(METADATA_PATH, "w", encoding="utf-8") as f:
+            json.dump(meta, f, indent=2)
+        _cache.clear()
+        return {
+            "promoted": False,
+            "reasons": reasons,
+            "candidate": {"version": version, "holdout_accuracy": c_acc},
+            "incumbent": {"version": current_version, "holdout_accuracy": i_acc},
+        }
+    # ATOMIC promotion: one metadata write flips serving version.
+    for v in versions:
+        if v.get("status") == "serving":
+            v["status"] = "superseded"
+    cand["status"] = "serving"
+    meta["current_version"] = version
+    with open(METADATA_PATH, "w", encoding="utf-8") as f:
+        json.dump(meta, f, indent=2)
+    _cache.clear()
+    return {
+        "promoted": True,
+        "model": cand,
+        "candidate": {"version": version, "holdout_accuracy": c_acc},
+        "incumbent": {"version": current_version, "holdout_accuracy": i_acc},
+    }
 
 
 def set_current_version(version: int) -> dict:

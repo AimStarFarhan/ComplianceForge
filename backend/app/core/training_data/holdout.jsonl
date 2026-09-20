@@ -1,0 +1,163 @@
+{"text": "\"login\": { \"default\": \"tacacs+\", \"fallback\": \"local\" },", "label": "aaa"}
+{"text": "aaa authentication dot1x default group RADIUS_SERVERS", "label": "aaa"}
+{"text": "aaa authorization exec default local", "label": "aaa"}
+{"text": "authentication-order [ radius password ];", "label": "aaa"}
+{"text": "no aaa root", "label": "aaa"}
+{"text": "radius server RADIUS_2", "label": "aaa"}
+{"text": "set access profile dyn-vpn-ldap-xauth authentication-order ldap", "label": "aaa"}
+{"text": "set system login class audit-admin allow-configuration \"(system syslog)", "label": "aaa"}
+{"text": "set system radius-server address <server ipaddress> port 1812 secret <shared secret>", "label": "aaa"}
+{"text": "Request documentation of the architecture and Juniper SRX configuration. Verify the site has configured the SRX to fail closed, thus preventing traffic from flowing through without filtering and inspection.", "label": "access_control"}
+{"text": "class VOICE", "label": "access_control"}
+{"text": "ip access-group  FILTER_PERIMETER in", "label": "access_control"}
+{"text": "ip access-group FILTER_ISP in", "label": "access_control"}
+{"text": "ip access-group TRAFFIC_TO_NOC in", "label": "access_control"}
+{"text": "ip access-list extended EGRESS_FILTER", "label": "access_control"}
+{"text": "ip access-list extended FILTER_SERVER_TRAFFIC", "label": "access_control"}
+{"text": "ip access-list extended PIM_REGISTER_FILTER", "label": "access_control"}
+{"text": "ip address 10.1.25.5 255.255.255.0", "label": "access_control"}
+{"text": "no class class-default", "label": "access_control"}
+{"text": "access-group CORE-SW-01 in log enable", "label": "acl_logging"}
+{"text": "access-list inbound deny icmp any any log", "label": "acl_logging"}
+{"text": "deny spoofed source log discard", "label": "acl_logging"}
+{"text": "ipv6 access-list SPINE-01 deny all log", "label": "acl_logging"}
+{"text": "permit established sessions log summary", "label": "acl_logging"}
+{"text": "set firewall filter CORE-SW-01 term 5 then log", "label": "acl_logging"}
+{"text": "/* IUB login hosts */", "label": "authentication"}
+{"text": "admin-lockout duration 10", "label": "authentication"}
+{"text": "block repeated login failures cooldown", "label": "authentication"}
+{"text": "disable default operator account", "label": "authentication"}
+{"text": "login block-for 900 attempts 3 within 120", "label": "authentication"}
+{"text": "password lifetime days enforce rotation", "label": "authentication"}
+{"text": "set file account-actions match \u201csystem login user\u201d", "label": "authentication"}
+{"text": "banner exec ^C", "label": "banner"}
+{"text": "banner login #", "label": "banner"}
+{"text": "banner motd #Welcome!#", "label": "banner"}
+{"text": "classified banner handling caveat display", "label": "banner"}
+{"text": "issue net AGGR-04 warning text", "label": "banner"}
+{"text": "login-message CORE-SW-01 classified system", "label": "banner"}
+{"text": "set message motd off", "label": "banner"}
+{"text": "Authentication Protocol: SHA", "label": "cryptography"}
+{"text": "authentication pre-share", "label": "cryptography"}
+{"text": "crypto map IPSEC_MGMT_MAP 10 ipsec-isakmp", "label": "cryptography"}
+{"text": "delete system services telnet", "label": "cryptography"}
+{"text": "ip http secure-client-auth", "label": "cryptography"}
+{"text": "ip router isis", "label": "cryptography"}
+{"text": "request security pki generate-key-pair certificate-id <cert name> type rsa size <512 | 1024 | 2048 | 4096>", "label": "cryptography"}
+{"text": "set access profile dyn-vpn-ldap-xauth ldap-options search admin-search distinguished-name CN=Administrator, CN=Users, DC=firewall, DC=com (User who is authorized to search the ldap tree)", "label": "cryptography"}
+{"text": "set peer 10.1.12.1", "label": "cryptography"}
+{"text": "set security ike gateway <IKE-PEER> external-interface <EXTERNAL-INTERFACE-NAME>", "label": "cryptography"}
+{"text": "Interface Vlan11", "label": "interface_security"}
+{"text": "deny ipv6 any any log", "label": "interface_security"}
+{"text": "interface GigabitEthernet2", "label": "interface_security"}
+{"text": "interface Vlan3", "label": "interface_security"}
+{"text": "ip icmp rate-limit unreachable 100000", "label": "interface_security"}
+{"text": "ip verify unicast source reachable-via any", "label": "interface_security"}
+{"text": "no ip redirects", "label": "interface_security"}
+{"text": "permit ip x.0.0.0 0.255.255.255 any", "label": "interface_security"}
+{"text": "set applications application TCP-ALL source-port 1-65535 destination-port 1-65535 protocol tcp inactivity-timeout 900", "label": "interface_security"}
+{"text": "set security idp security-package automatic enable", "label": "interface_security"}
+{"text": "aaa group server radius RADIUS_GROUP", "label": "logging"}
+{"text": "ip access-list extended INGRESS_FILTER", "label": "logging"}
+{"text": "log config", "label": "logging"}
+{"text": "permit ip host x.1.2.6 any", "label": "logging"}
+{"text": "radius server RADIUS2", "label": "logging"}
+{"text": "set firewall family inet filter protect_re term tcp-connection then syslog", "label": "logging"}
+{"text": "set system login class crypto-admin deny-commands \"^clear (log|security alarms|security log|system login lockout)|^file (copy|delete|rename)|^rollback|^set date|^show security (alarms|dynamic-policies|match-policies|policies)|^start shell", "label": "logging"}
+{"text": "set system login class security-admin security-role security-administrator", "label": "logging"}
+{"text": "set system syslog file User-Auth authorization any", "label": "logging"}
+{"text": "\"telnet\": { \"state\": \"disabled\" },", "label": "management_protocol"}
+{"text": "disable telnet daemon on CORE-SW-01", "label": "management_protocol"}
+{"text": "ip access-group blocktelnet in", "label": "management_protocol"}
+{"text": "management telnet idle-disconnect enable", "label": "management_protocol"}
+{"text": "service telnet daemon-start auto", "label": "management_protocol"}
+{"text": "set system services netconf ssh only", "label": "management_protocol"}
+{"text": "set system services web-management session idle-timeout", "label": "management_protocol"}
+{"text": "/* NTP Server */", "label": "ntp"}
+{"text": "Delete NTP options from zones and interface commands. Re-enter the set security zone command without the \"ntp\" attribute. The exact command entered depends how the zone is configured with the authorized attributes, services, and options.", "label": "ntp"}
+{"text": "ntp authentication-key 1 md5 xxxxxx", "label": "ntp"}
+{"text": "ntp server vrf MGMT 1.north-america.pool.ntp.org", "label": "ntp"}
+{"text": "ntp.auth-key read", "label": "ntp"}
+{"text": "permit udp any any eq ntp", "label": "ntp"}
+{"text": "set ntp server secondary ntp2.checkpoint.com version 4", "label": "ntp"}
+{"text": "set rulebase security rules IN_TO_OUT_NTP source any", "label": "ntp"}
+{"text": "Set \"PASSWD|POLICIES\" minlen in /etc/sonic/config_db.json", "label": "password_policy"}
+{"text": "match \"password\"", "label": "password_policy"}
+{"text": "no service password-encryption", "label": "password_policy"}
+{"text": "secret 5 $1$Joxi$FOgljf610R6off2td9BC.1", "label": "password_policy"}
+{"text": "set expert-password-hash $1$Q8.F1McK$kjxSlwModZiKLrL.GWJck0", "label": "password_policy"}
+{"text": "set password ENC 0SXhPbwS9YXHKR01pC697CrIUyHSX48w1zKqRUR6Cy5Wop+HCzLejsr6lAb11TuUSZN1K6Qupvaz3teJ7zEl0aATF/CM/MPn9QtkvNQhGyAptzRrtszrKnmoPv9fNQMZ0hXfv6J2xhUjkdeN6buwaYGsZgVFV84GA+Rb3TImuSArz5u3nTbqzir1VSPPiuPyIol6iA==", "label": "password_policy"}
+{"text": "set password ENC AAAAgX/Nnl8lXtBsqGsdanm0EP0Be34XT0lvHZ11ggN8qgjEzhONv590ZocbRt3A2u3Usy8r+Qk9P/Ux8vovNukggD7D1D6KMw5y7IJ4xl3+6EeFQiVjBp7lt7UvIBxRT5t/yhDGXUGbCFW1kXU0kxQHDcqA5lLzYDbsiYpnaE6FEKGO6/fYOpYl0teemNV0oWH20w==", "label": "password_policy"}
+{"text": "set password ENC KmmrJSBY6s2dDEWEg9f22bpGrzIME2+3535NFWgvQpRO44kGQskiofmOeYOyJ9wsLBA/jmK8iDhrS6UgMjKjTKfB27IRLWKUeFU2EiHwD7WEvTEdxfHnT8zp16q0XAHFPyCDfw8IUyYUeG5rGoMNQlr5H/Zm+UbDGXoU5+g/74GPZwfPYnON2WTfCsX4N0JDokKSRQ==", "label": "password_policy"}
+{"text": "set password-policy minimum-length 8", "label": "password_policy"}
+{"text": "set system login user <name of the account of last resort> plain-text-password", "label": "password_policy"}
+{"text": "admin-roles read-only;", "label": "privilege_escalation"}
+{"text": "class class-name access-end HH:MM;", "label": "privilege_escalation"}
+{"text": "forwarding-class network-control scheduler network-control_schedule;", "label": "privilege_escalation"}
+{"text": "rba role PartitionReadOnly default-privilege read partition-only", "label": "privilege_escalation"}
+{"text": "rba role SlbServiceAdmin default-privilege no-access", "label": "privilege_escalation"}
+{"text": "set network qos profile default class class1 priority real-time", "label": "privilege_escalation"}
+{"text": "set network qos profile default class class8 priority low", "label": "privilege_escalation"}
+{"text": "BGP Example", "label": "routing_integrity"}
+{"text": "deny ip 10.0.0.0 0.255.255.255 any       ! RFC 1918 address range", "label": "routing_integrity"}
+{"text": "deny ip any host 224.0.1.39                     ! Auto-RP", "label": "routing_integrity"}
+{"text": "ip authentication key-chain eigrp 1 EIGRP_KEY", "label": "routing_integrity"}
+{"text": "ip prefix-list CE_PREFIX_ADVERTISEMENTS deny 0.0.0.0/0 ge 8", "label": "routing_integrity"}
+{"text": "ip prefix-list FILTER_CORE_PREFIXES deny x.1.1.0/24 le 32", "label": "routing_integrity"}
+{"text": "ip prefix-list PREFIX_FILTER permit 0.0.0.0/0 ge 8", "label": "routing_integrity"}
+{"text": "ip prefix-list PREFIX_FILTER_CUST2 deny 0.0.0.0/0 ge 8", "label": "routing_integrity"}
+{"text": "ip vrf forwarding COI1", "label": "routing_integrity"}
+{"text": "neighbor 10.1.1.1 password xxxxxxxx", "label": "routing_integrity"}
+{"text": "cdp enable", "label": "service_hardening"}
+{"text": "disable auxiliary port on SPINE-01", "label": "service_hardening"}
+{"text": "iface eth0 inet dhcp", "label": "service_hardening"}
+{"text": "lldp run", "label": "service_hardening"}
+{"text": "no ip finger", "label": "service_hardening"}
+{"text": "no lldp run", "label": "service_hardening"}
+{"text": "service pad", "label": "service_hardening"}
+{"text": "! or restrict: snmp-server community <RANDOM-STRING> RO <MGMT-ACL>", "label": "snmp_management"}
+{"text": "/* Macomb Community College MICH-858 */", "label": "snmp_management"}
+{"text": "community \"target:65000:1\"", "label": "snmp_management"}
+{"text": "permit udp 10.1.34.0 0.0.0.255 10.22.2.0 0.0.0.255 eq snmp", "label": "snmp_management"}
+{"text": "remove monitor protocol snmp read-string public", "label": "snmp_management"}
+{"text": "set snmp v3 notify <SNMP-TRAPS> tag <SNMP-TRAP-RECEIVER>", "label": "snmp_management"}
+{"text": "set snmp v3 target-address <ADDR> parameters <PARAMS>", "label": "snmp_management"}
+{"text": "set snmp v3 usm local-engine user <NAME> authentication-sha", "label": "snmp_management"}
+{"text": "set snmp view all oid jnxBoxAnatomy include", "label": "snmp_management"}
+{"text": "snmp-server host x.x.x.x version 3 auth V3USER", "label": "snmp_management"}
+{"text": "SSH Example", "label": "ssh_policy"}
+{"text": "enable secure-shell protocol-2", "label": "ssh_policy"}
+{"text": "ip ssh time-out 90", "label": "ssh_policy"}
+{"text": "set hostkey-ed25519 \"Fortinet_SSH_ED25519\"", "label": "ssh_policy"}
+{"text": "set security ssh_host_protocol_v2", "label": "ssh_policy"}
+{"text": "set system services ssh ciphers aes256-ctr", "label": "ssh_policy"}
+{"text": "set system services ssh key-exchange group-exchange-sha2", "label": "ssh_policy"}
+{"text": "set system services ssh rate-limit 4", "label": "ssh_policy"}
+{"text": "ssh yes;", "label": "ssh_policy"}
+{"text": "/* OBS ISIS Logging on nms-rpsv.wash */", "label": "syslog"}
+{"text": "ddos-protection logging enable", "label": "syslog"}
+{"text": "ip.nat.template.logging write", "label": "syslog"}
+{"text": "logging host 10.20.30.40", "label": "syslog"}
+{"text": "logging syslog disable", "label": "syslog"}
+{"text": "login on-success log", "label": "syslog"}
+{"text": "set host <syslog server address> any <info | any>", "label": "syslog"}
+{"text": "set security log format syslog", "label": "syslog"}
+{"text": "set system syslog file authlog authorization info", "label": "syslog"}
+{"text": "set system syslog host <IP-syslog-server> source-address <MGT-IP-Address>", "label": "syslog"}
+{"text": "\"10.10.1.1\": {},", "label": "unknown"}
+{"text": "/* Block Transitrail Connector routes */", "label": "unknown"}
+{"text": "/* FranceTelecom PASBB1 node--see also accompanying static route to make this reachable */", "label": "unknown"}
+{"text": "/* Only accept routes within certain allocated blocks */", "label": "unknown"}
+{"text": "/* allow next-hop for tata telepresence peering, learned internally & set with NO-EXPORT-EXTERNAL */", "label": "unknown"}
+{"text": "/* only advertise participant routes */", "label": "unknown"}
+{"text": "description WAN", "label": "unknown"}
+{"text": "clock timezone EST -5", "label": "zone_policy"}
+{"text": "description Tenant_A_DB_Zone_2", "label": "zone_policy"}
+{"text": "description Tenant_A_WAN_Zone_1", "label": "zone_policy"}
+{"text": "description Tenant_B_OP_Zone_1", "label": "zone_policy"}
+{"text": "description Tenant_C_OP_Zone_1", "label": "zone_policy"}
+{"text": "ip address virtual source-nat vrf Tenant_A_OP_Zone address 10.255.1.3", "label": "zone_policy"}
+{"text": "set security policies from-zone <zone_name> to-zone <zone_name> policy <policy_name> then log", "label": "zone_policy"}
+{"text": "set security policies from-zone trust to-zone untrust policy user-role-fw1 match source-identity unauthenticated-user", "label": "zone_policy"}
+{"text": "set security policies from-zone untrust to-zone trust policy default-deny then deny", "label": "zone_policy"}
+{"text": "set security zones security-zone trust interfaces ge-0/0/2.0", "label": "zone_policy"}

@@ -1,13 +1,14 @@
-"""Simple JWT auth: single admin role (demo).
+"""JWT auth: single admin role.
 
-Password from env CF_ADMIN_PASSWORD (default 'admin'). Judges asked "who can
-approve a mapping" — the answer is this named admin role.
+Startup REQUIRES CF_ADMIN_PASSWORD and CF_JWT_SECRET to be set, unless the
+explicit dev escape hatch CF_DEV_ALLOW_DEFAULTS=1 is present (tests + local
+demo only). There is deliberately no production default: shipping admin/admin
+means anyone who can reach the login endpoint becomes the human in the loop.
 """
 
 from __future__ import annotations
 
 import os
-import secrets
 import sys
 from datetime import datetime, timedelta, timezone
 
@@ -19,19 +20,36 @@ ALGORITHM = "HS256"
 TOKEN_TTL_MINUTES = 12 * 60
 
 ADMIN_USER = "admin"
-ADMIN_PASSWORD = os.environ.get("CF_ADMIN_PASSWORD", "admin")
+
+
+def _dev_defaults_allowed() -> bool:
+    return os.environ.get("CF_DEV_ALLOW_DEFAULTS", "0") == "1"
+
+
+def _require_env(name: str, dev_default: str) -> str:
+    value = os.environ.get(name, "")
+    if value:
+        return value
+    if _dev_defaults_allowed():
+        print(
+            f"WARNING: {name} not set -- using insecure dev default. "
+            "Set it before any shared/demo deployment.",
+            file=sys.stderr,
+        )
+        return dev_default
+    print(
+        f"FATAL: {name} must be set (or set CF_DEV_ALLOW_DEFAULTS=1 for local "
+        "dev/tests only). Refusing to start with default credentials.",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+
+
+ADMIN_PASSWORD = _require_env("CF_ADMIN_PASSWORD", "admin")
 
 
 def _jwt_secret() -> str:
-    """CF_JWT_SECRET wins; dev fallback only outside production, per worker-random
-    would break multi-worker auth, so in prod we REQUIRE it to be set."""
-    env = os.environ.get("CF_JWT_SECRET", "")
-    if env:
-        return env
-    if os.environ.get("CF_ENV", "dev").lower() in ("prod", "production"):
-        print("FATAL: CF_JWT_SECRET must be set in production", file=sys.stderr)
-        raise SystemExit(1)
-    return "complianceforge-dev-secret"  # single-process dev/demo only
+    return _require_env("CF_JWT_SECRET", "complianceforge-dev-secret")
 
 
 SECRET = _jwt_secret()

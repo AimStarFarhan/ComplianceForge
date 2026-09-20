@@ -23,6 +23,10 @@ if not exist "%~dp0frontend\node_modules" (
 )
 
 REM ---- 3. Start backend (FastAPI on :8000) ----
+REM Auth: local demo uses dev-default credentials. For any shared/demo
+REM deployment set CF_ADMIN_PASSWORD + CF_JWT_SECRET instead (the backend
+REM refuses to start with defaults otherwise).
+set CF_DEV_ALLOW_DEFAULTS=1
 REM AI modes: local LM Studio models (air-gapped, no API key needed).
 REM   Classifier -> fast 1.2B model (per-pattern calls must stay snappy).
 REM   Report analyst (chat) -> larger reasoning model (quality matters).

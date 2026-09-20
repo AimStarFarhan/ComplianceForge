@@ -72,24 +72,51 @@ def _line_polarity(line: str) -> bool | None:
     return None
 
 
-def infer_baseline(db, device_id: str, raw_config: str) -> tuple[SecurityBaselineModel, dict[str, _Tally]]:
-    """Build a baseline for unseen-vendor configs from confirmed mappings."""
+def infer_baseline(
+    db, device_id: str, raw_config: str, vendor_hint: str = "any"
+) -> tuple[SecurityBaselineModel, dict[str, _Tally], list[dict]]:
+    """Build a baseline for unseen-vendor configs from confirmed mappings.
+
+    Returns (model, tallies, provenance) where provenance is one record per
+    mapped line: {line_number, text, category, mapping_id, reviewer,
+    proposal_source, proposal_confidence, decided_at, slots, value_drift}.
+    A category NEVER directly decides PASS/FAIL: it only routes the line into
+    this reviewed semantic extractor, which sets baseline fields + evidence;
+    the rule engine then evaluates those fields. Until this adapter exists
+    for a line, the line stays unresolved (unparsed) and the audit is
+    flagged provisional.
+    """
     cache = RuleCache(db)
     model = SecurityBaselineModel(
         device=DeviceInfo(device_id=device_id, vendor="unseen_vendor", device_type="unseen")
     )
     tallies: dict[str, _Tally] = {}
     unmapped: list[RawLine] = []
+    provenance: list[dict] = []
 
     for i, raw in enumerate(raw_config.splitlines(), 1):
         line = raw.strip()
         if not line or line.startswith("!") or line.startswith("#"):
             continue
-        hit = cache.match(line, vendor_hint="any")
+        hit = cache.match(line, vendor_hint=vendor_hint)
         if not hit:
             unmapped.append(RawLine(line_number=i, text=line))
             continue
         category = hit["category"]
+        provenance.append(
+            {
+                "line_number": i,
+                "text": line,
+                "category": category,
+                "mapping_id": hit["mapping_id"],
+                "reviewer": hit.get("reviewer", ""),
+                "proposal_source": hit.get("proposal_source", ""),
+                "proposal_confidence": hit.get("proposal_confidence"),
+                "decided_at": hit.get("decided_at"),
+                "slots": hit.get("slots", {}),
+                "value_drift": hit.get("value_drift", False),
+            }
+        )
         t = tallies.setdefault(category, _Tally())
         pol = _line_polarity(line)
         if pol is True:
@@ -123,7 +150,8 @@ def infer_baseline(db, device_id: str, raw_config: str) -> tuple[SecurityBaselin
         elif category == "ssh_policy":
             if pol is False and re.search(r"protocol-?2|v2|version\s*2", low) is None:
                 pass  # disabling something ssh-ish — don't guess
-            m2 = re.search(r"protocol-?v?ersion?[- ]?2", low)
+            v2 = hit.get("slots", {}).get("ssh_version")
+            m2 = v2 == 2 or re.search(r"protocol-?v?ersion?[- ]?2", low)
             if m2:
                 model.management.ssh_version = 2
                 model.management.ssh_enabled = True
@@ -145,7 +173,12 @@ def infer_baseline(db, device_id: str, raw_config: str) -> tuple[SecurityBaselin
                     pass
 
         elif category == "password_policy":
-            m = NUM_RE.search(line)
+            slot_min = hit.get("slots", {}).get("min_length")
+            if isinstance(slot_min, int) and slot_min <= 64:
+                model.auth.password_min_length = slot_min
+                m = None
+            else:
+                m = NUM_RE.search(line)
             if "min" in low and m:
                 try:
                     val = int(m.group(1))
@@ -200,4 +233,4 @@ def infer_baseline(db, device_id: str, raw_config: str) -> tuple[SecurityBaselin
                 model.services.unused_services.append(line)
 
     model.unparsed_lines = unmapped
-    return model, tallies
+    return model, tallies, provenance
