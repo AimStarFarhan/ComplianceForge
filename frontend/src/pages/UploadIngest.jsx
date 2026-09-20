@@ -17,7 +17,6 @@ export default function UploadIngest() {
   const [result, setResult] = useState(null);
   const [bulkResults, setBulkResults] = useState([]);
   const [busy, setBusy] = useState(false);
-  const [trainMsg, setTrainMsg] = useState("");
   const toast = useToast();
 
   const ingestOne = async (file, idx, total) => {
@@ -34,7 +33,6 @@ export default function UploadIngest() {
     setBusy(true);
     setResult(null);
     setBulkResults([]);
-    setTrainMsg("");
     try {
       const outs = [];
       for (let i = 0; i < files.length; i++) {
@@ -64,29 +62,6 @@ export default function UploadIngest() {
       } else {
         toast(`Bulk ingest: ${okCount}/${outs.length} files normalized${trainCount ? `, ${trainCount} need training` : ""}`);
       }
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const trainDevice = async () => {
-    if (!result) return;
-    setBusy(true);
-    try {
-      const res = await api("/training/train-device", {
-        method: "POST",
-        body: { device_id: result.device_id, confirmed_by: "admin" },
-      });
-      setTrainMsg(
-        `Trained ${res.trained_lines} lines (${res.already_learned} already known). ` +
-        `This vendor is now KNOWN — re-ingest the same file or run the audit; all lines auto-recognize and full rule checks apply.`
-      );
-      toast(`Device trained — ${res.trained_lines} mappings confirmed. Vendor is now known.`);
-      // refresh ingest state for this device
-      const fresh = { ...result, next_step: "recognized_unknown", trainable: false, fully_recognized: true, recognized_count: res.trained_lines + res.already_learned };
-      setResult(fresh);
-    } catch (e) {
-      toast(`Training failed: ${e.message}`);
     } finally {
       setBusy(false);
     }
@@ -196,21 +171,17 @@ export default function UploadIngest() {
                       <span className="material-symbols-outlined text-[26px] text-ochreHazard">psychology_alt</span>
                       <div className="flex-1">
                         <div className="font-display text-sm font-bold text-peatCharcoal">
-                          Unknown vendor — {result.unparsed_count} unrecognized lines
+                          Unknown vendor — CompilerAI found {result.unparsed_count} unrecognized lines
                         </div>
                         <div className="font-mono text-[11px] text-taupe-muted mt-1 leading-relaxed">
-                          No parser knows this syntax yet. Every line is queued with an AI-proposed category.
-                          Train on this data to make this vendor <strong className="text-peatCharcoal">known</strong> — after training,
+                          No parser knows this syntax yet. CompilerAI queued every line with a proposed category.
+                          Review and approve lines in the Training Queue to make this vendor <strong className="text-peatCharcoal">known</strong> — after training,
                           re-ingesting this file auto-recognizes every line and full audit tests run on it.
                         </div>
                         <div className="flex items-center gap-2 mt-3">
-                          <button onClick={trainDevice} disabled={busy} className="btn-primary">
+                          <Link to="/console/training" className="btn-primary">
                             <span className="material-symbols-outlined text-[17px]">model_training</span>
-                            <span>{busy ? "Training…" : "Train on this data"}</span>
-                          </button>
-                          <Link to="/console/training" className="btn-ghost">
-                            <span className="material-symbols-outlined text-[17px]">rate_review</span>
-                            <span>Review line-by-line</span>
+                            <span>Review & approve ({result.unparsed_count} lines)</span>
                           </Link>
                         </div>
                       </div>
@@ -224,7 +195,7 @@ export default function UploadIngest() {
                       <span className="material-symbols-outlined text-[26px] text-mutedMeadow">verified</span>
                       <div className="flex-1">
                         <div className="font-display text-sm font-bold text-peatCharcoal">
-                          Vendor now KNOWN — {result.recognized_count ?? result.unparsed_count} lines auto-recognized
+                          Vendor now KNOWN to CompilerAI — {result.recognized_count ?? result.unparsed_count} lines auto-recognized
                         </div>
                         <div className="font-mono text-[11px] text-taupe-muted mt-1 leading-relaxed">
                           Previously-trained mappings matched every line in this file. Full rule checks now apply —
@@ -239,18 +210,11 @@ export default function UploadIngest() {
                   </div>
                 )}
 
-                {trainMsg && (
-                  <div className="p-3 rounded bg-creamParchment border border-weatheredTaupe font-mono text-xs text-peatCharcoal leading-relaxed">
-                    <span className="material-symbols-outlined text-[15px] text-mutedMeadow align-middle mr-1.5">model_training</span>
-                    {trainMsg}
-                  </div>
-                )}
-
                 {result.unparsed_lines?.length > 0 && (
                   <details className="pane p-3">
-                    <summary className="label-md cursor-pointer">Unrecognized lines (queued for human review)</summary>
+                    <summary className="label-md cursor-pointer">Unrecognized lines — CompilerAI proposals queued for human review</summary>
                     <pre className="mt-2 max-h-56 overflow-auto font-mono text-[11px] leading-relaxed">
-                      {result.unparsed_lines.map((l) => `L${l.line_number}: ${l.text}`).join("\n")}
+                      {result.unparsed_lines.map((l) => `L${l.line_number}: ${l.text}${l.suggested_category ? `  → CompilerAI: ${l.suggested_category} (${Math.round((l.suggested_confidence ?? 0) * 100)}%, ${l.suggested_source || l.match_type || "proposal"})` : ""}`).join("\n")}
                     </pre>
                   </details>
                 )}

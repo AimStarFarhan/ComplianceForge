@@ -62,12 +62,12 @@ export default function Header() {
             ></span>
             <span>
               {health?.ai_mode === "local_lm"
-                ? "AI: Local LM"
+                ? "CompilerAI · Local LM"
                 : health?.ai_mode === "llm"
-                  ? "AI: Cloud LLM"
+                  ? "CompilerAI · Cloud LLM"
                   : health?.ai_mode === "deterministic"
-                    ? "Deterministic · LLM-ready"
-                    : "AI: …"}
+                    ? "CompilerAI · Deterministic"
+                    : "CompilerAI · …"}
             </span>
             {health?.model_version > 0 && (
               <span className="ml-1 px-1.5 py-px rounded bg-sprucePine border border-mutedMeadow/50 text-[#FCF9F0]">
