@@ -45,25 +45,55 @@ def audit_device(device_id: str, framework: str = "cis", db: Session = Depends(g
     if snapshot is None:
         raise HTTPException(404, f"No config snapshot for device '{device_id}'")
 
-    baseline = _normalize(db, snapshot, device)
+    baseline, ai_provenance = _normalize(db, snapshot, device)
 
     if device.vendor == VENDOR_UNSEEN:
         # Learned-vendor audit: the baseline is INFERRED from human-confirmed
-        # mappings, so every finding is tagged ai_suggested_human_confirmed.
-        if _mapping_coverage(db, snapshot) > 0:
+        # mappings, so every finding is tagged ai_suggested_human_confirmed
+        # AND carries the mapping/reviewer provenance that produced it.
+        if _mapping_coverage(db, snapshot, device.vendor) > 0:
             results = run_audit(baseline)
             for r in results:
                 r["source"] = "ai_suggested_human_confirmed"
+                r["provenance"] = {
+                    "adapter": "infer_baseline/v1",
+                    "mappings": [
+                        {
+                            "mapping_id": p["mapping_id"],
+                            "reviewer": p["reviewer"],
+                            "proposal_source": p["proposal_source"],
+                            "proposal_confidence": p["proposal_confidence"],
+                            "decided_at": p["decided_at"],
+                        }
+                        for p in ai_provenance
+                    ],
+                }
         else:
             results = []
     else:
         results = run_audit(baseline)
+        for r in results:
+            r.pop("provenance", None)
 
     summary = summarize(results) if results else {
         "total_rules": 0, "pass_count": 0, "fail_count": 0, "error_count": 0,
         "not_applicable_count": 0, "compliance_pct": 0.0,
         "failed_by_severity": {}, "top_critical_findings": [],
     }
+    # Provisional compliance: a category never decides PASS/FAIL by itself,
+    # and learned evidence is human-confirmed inference, not parser ground
+    # truth. Any AI-derived finding -- or any leftover unparsed line -- marks
+    # the whole result provisional: no full-confidence compliance claim.
+    ai_derived = sum(1 for r in results if r.get("source") == "ai_suggested_human_confirmed")
+    provisional = ai_derived > 0 or len(baseline.unparsed_lines) > 0
+    summary["ai_derived_count"] = ai_derived
+    summary["provisional"] = provisional
+    if provisional:
+        summary["confidence_note"] = (
+            f"{ai_derived} finding(s) derive from human-confirmed learned mappings "
+            f"and {len(baseline.unparsed_lines)} line(s) remain unresolved; "
+            "treat compliance as provisional pending review."
+        )
 
     run = AuditRun(
         snapshot_fk=snapshot.id,
@@ -82,7 +112,8 @@ def audit_device(device_id: str, framework: str = "cis", db: Session = Depends(g
         db.add(Finding(run_fk=run.id, **{k: r.get(k, "") for k in (
             "rule_id", "rule_title", "title", "severity", "status", "evidence",
             "maps_to", "explanation", "remediation", "source", "category",
-        ) if k in ("rule_id", "severity", "status", "evidence", "maps_to", "explanation", "remediation", "source", "category")} | {"rule_title": r["title"]}))
+        ) if k in ("rule_id", "severity", "status", "evidence", "maps_to", "explanation", "remediation", "source", "category")} | {"rule_title": r["title"]},
+            provenance_json=json.dumps(r.get("provenance", {}))))
     snapshot.audited = True
     if device.vendor == VENDOR_UNSEEN and results:
         # persist the INFERRED baseline so the UI's "Normalized Baseline" pane
@@ -97,6 +128,7 @@ def audit_device(device_id: str, framework: str = "cis", db: Session = Depends(g
         "vendor": device.vendor,
         "framework": fw,
         "summary": summary,
+        "provisional": provisional,
         "framework_summary": framework_summary(results, fw),
         "findings": annotate_findings(results, fw),
         "unparsed_count": len(baseline.unparsed_lines),
@@ -109,8 +141,10 @@ def _normalize(db, snapshot, device):
     if parser is None:
         # UNSEEN vendor: infer the baseline from human-confirmed mappings.
         # Lines with no confirmed mapping stay in unparsed_lines (queue).
-        baseline, _tallies = infer_baseline(db, device.device_id, snapshot.raw_config)
-        return baseline
+        baseline, _tallies, provenance = infer_baseline(
+            db, device.device_id, snapshot.raw_config, vendor_hint=device.vendor
+        )
+        return baseline, provenance
     baseline = parser.parse(snapshot.raw_config, device.device_id)
     cache = RuleCache(db)
     for ul in baseline.unparsed_lines:
@@ -119,10 +153,10 @@ def _normalize(db, snapshot, device):
             ul.category = hit["category"]
             ul.suggested_category = hit["category"]
             ul.suggested_confidence = hit["confidence"]
-    return baseline
+    return baseline, []
 
 
-def _mapping_coverage(db, snapshot) -> float:
+def _mapping_coverage(db, snapshot, vendor_hint: str = "any") -> float:
     """Fraction of substantive raw lines that have a confirmed mapping."""
     cache = RuleCache(db)
     total = matched = 0
@@ -131,6 +165,6 @@ def _mapping_coverage(db, snapshot) -> float:
         if not s or s.startswith("!") or s.startswith("#"):
             continue
         total += 1
-        if cache.match(s, vendor_hint="any"):
+        if cache.match(s, vendor_hint=vendor_hint):
             matched += 1
     return matched / total if total else 0.0

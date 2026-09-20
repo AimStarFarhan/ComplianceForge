@@ -47,44 +47,59 @@ def test_retrain_promote_rollback_gate():
         before = c.get("/training/model/info", headers=h).json()
         v0 = before["model_version"]
         assert v0 >= 1
+        max_pre = max(before.get("available_versions", [v0]))
+        served_before, _ = tc.predict("snmp-server community S3cr3tStr1ng RO")
 
-        # retrain on the same dataset: accuracy should be within gate -> promote
-        r = c.post("/training/model/retrain", headers=h)
-        assert r.status_code == 200, r.text
-        body = r.json()
-        assert "promoted" in body
-        after = c.get("/training/model/info", headers=h).json()
-        if body["promoted"]:
-            assert after["model_version"] == v0 + 1
-            # rollback restores
-            r = c.post(f"/training/model/rollback/{v0}", headers=h)
+        # retrain trains a CANDIDATE (serving untouched) then gates promotion
+        try:
+            r = c.post("/training/model/retrain", headers=h)
             assert r.status_code == 200, r.text
-            rolled = c.get("/training/model/info", headers=h).json()
-            assert rolled["model_version"] == v0
-            # re-promote forward so the DB ends on latest
-            r = c.post(f"/training/model/rollback/{v0 + 1}", headers=h)
+            body = r.json()
+            assert "promoted" in body
+            assert "candidate" in body
+            cand_v = body["candidate"]["version"]
+            assert cand_v > v0  # new artifact recorded...
+
+            after = c.get("/training/model/info", headers=h).json()
+            if body["promoted"]:
+                assert after["model_version"] == cand_v
+                # ...and rollback restores the incumbent, then re-promotes
+                r = c.post(f"/training/model/rollback/{v0}", headers=h)
+                assert r.status_code == 200, r.text
+                rolled = c.get("/training/model/info", headers=h).json()
+                assert rolled["model_version"] == v0
+                r = c.post(f"/training/model/rollback/{cand_v}", headers=h)
+                assert r.status_code == 200
+            else:
+                # gate rejected: serving version NEVER pointed at the candidate,
+                # not even briefly -- predictions still come from the incumbent
+                assert after["model_version"] == v0
+                served_after, _ = tc.predict("snmp-server community S3cr3tStr1ng RO")
+                assert served_after == served_before
+                info = tc.get_model_info()
+                assert info["model_version"] == v0
+
+            # export returns JSONL {text,label}
+            r = c.get("/training/dataset/export", headers=h)
             assert r.status_code == 200
-        else:
-            # gate rejected: version unchanged
-            assert after["model_version"] == v0
+            first = r.text.splitlines()[0]
+            obj = json.loads(first)
+            assert "text" in obj and "label" in obj
 
-        # export returns JSONL {text,label}
-        r = c.get("/training/dataset/export", headers=h)
-        assert r.status_code == 200
-        first = r.text.splitlines()[0]
-        obj = json.loads(first)
-        assert "text" in obj and "label" in obj
+            # stats carry model proof for the dashboard header
+            r = c.get("/training/stats", headers=h)
+            s = r.json()
+            assert s["dataset_size"] >= 1000
+            assert s["model_version"] >= 1
+            assert s["model_accuracy"] is not None
 
-        # stats carry model proof for the dashboard header
-        r = c.get("/training/stats", headers=h)
-        s = r.json()
-        assert s["dataset_size"] >= 1000
-        assert s["model_version"] >= 1
-        assert s["model_accuracy"] is not None
+            # health carries the same proof
+            r = c.get("/health")
+            assert r.status_code == 200
+            health = r.json()
+            assert health["dataset_size"] >= 1000
+            assert health["model_version"] >= 1
 
-        # health carries the same proof
-        r = c.get("/health")
-        assert r.status_code == 200
-        health = r.json()
-        assert health["dataset_size"] >= 1000
-        assert health["model_version"] >= 1
+        finally:
+            from conftest import prune_model_versions_after
+            prune_model_versions_after(max_pre)

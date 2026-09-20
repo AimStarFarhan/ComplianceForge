@@ -11,7 +11,7 @@ ComplianceForge ingests raw CLI configuration files from network devices (Cisco 
 The system learns **new, previously unseen vendor syntaxes**:
 
 1. Ingest an unknown-vendor config → every unrecognized line lands in the Training Queue with an AI-proposed category
-2. A human admin confirms/corrects — one line at a time, or one-click **"Train on this data"**
+2. A named human admin confirms/corrects — one line, one pattern, or explicit per-line bulk approvals with a dry-run summary (`POST /training/train-device` accepts only explicit approvals; `unknown`/low-confidence lines stay unresolved)
 3. Human-verified mappings are continuously added to the learning dataset and used for periodic model updates/fine-tuning.
 4. Re-ingesting the same file: every line **auto-recognizes** — the vendor is now *known*
 5. Full rule audits then run on the learned vendor, with every finding tagged `ai_suggested_human_confirmed` for auditability
@@ -67,8 +67,8 @@ demo/              unseen_vendor_config.txt (live judge demo fixture)
 | Variable | Purpose | Default |
 |---|---|---|
 | `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` | LLM classification of unknown lines | unset → offline heuristic |
-| `CF_ADMIN_PASSWORD` | admin login password | `admin` |
-| `CF_JWT_SECRET` | JWT signing secret | dev value |
+| `CF_ADMIN_PASSWORD` | admin login password | **required** (`CF_DEV_ALLOW_DEFAULTS=1` for local dev/tests only) |
+| `CF_JWT_SECRET` | JWT signing secret | **required** (same dev escape hatch) |
 | `CF_DB_PATH` | SQLite file location | `backend/complianceforge.db` |
 
 ## Tests
@@ -78,15 +78,16 @@ cd backend
 python -m pytest tests -q
 ```
 
-Covers vendor autodetection, all three parsers, rule packs, the safe AST evaluator (including code-injection rejection), the rule cache similarity matching, the trained-model smoke + retrain promote/rollback gate, and the full API flow including the learn-a-new-vendor loop.
+Covers vendor autodetection, all three parsers, rule packs, the safe AST evaluator (including code-injection rejection), exact-cache vendor isolation, forged-identity rejection, explicit-approval bulk training, candidate-never-serves promotion, AI-finding provenance + provisional flags, the trained-model smoke + retrain promote/rollback gate, and the full API flow including the learn-a-new-vendor loop (36 tests).
 
 ## Model
 
-- Dataset: `backend/app/core/training_data/dataset.jsonl` — ~1,200 balanced lines (~55–80 per each of 19 categories), deduped by normalized pattern. Sources: hand-verified rule-pack remediation CLI, sample-config syntax, sieved real-world configs (1,732 files → 5,158 candidates), synthetic fills for thin classes.
-- Train: `python backend/scripts/train_model.py` — 80/20 stratified split, promotes `model_vN.pkl` + `metadata.json` (accuracy, per-category F1) into `backend/app/core/model_artifacts/`.
+- Dataset: `backend/app/core/training_data/dataset.jsonl` — ~1,300 balanced lines (~53–80 per each of 19 categories), deduped by normalized pattern, zero conflicting patterns. Sources: hand-verified rule-pack remediation CLI, sample-config syntax, sieved real-world configs, STIG-mined CLI (891 rows), synthetic fills for thin classes.
+- Train: `python backend/scripts/train_model.py` — trains a CANDIDATE (holdout rows excluded, sha256 recorded); serving version untouched. Promote: `--promote` or `POST /training/model/retrain` — candidate vs incumbent scored on the immutable `holdout.jsonl`; atomic promotion only on overall + per-category (ssh_policy, management_protocol) gates.
+- Trust: reviewer identity from JWT (never request bodies); every decision appended to an immutable log (`GET /training/decisions`); L1 exact-only per-vendor matching; AI-derived findings carry mapping/reviewer provenance and audits flag `provisional`.
 - Serve: fixed-size artifact (~1MB whether 1k or 100k examples) via `trained_classifier.predict(text)`. Retrain/rollback/export: `POST /training/model/retrain`, `POST /training/model/rollback/{version}`, `GET /training/dataset/export`. Health + dashboard show `dataset_size, model_version, accuracy`.
 - Docker: `docker compose up` (CPU-only `python:3.12-slim` backend with baked-in model + Vite UI).
 
 ## Honest AI claims
 
-This is **human-in-the-loop adaptive mapping**, not autonomous ML: an LLM proposes categories for unknown lines, a named admin confirms, and a normalized pattern cache auto-matches future similar lines. Every rule cites its control-family mapping (labeled "illustrative") in the rule pack and the PDF report.
+This is **human-in-the-loop adaptive mapping**, not autonomous ML: an LLM proposes categories for unknown lines, a named admin confirms, and a bounded exact-pattern cache auto-recognizes identical future lines (similar lines are proposals, never auto-matches). Every rule cites its control-family mapping (labeled "illustrative") in the rule pack and the PDF report.

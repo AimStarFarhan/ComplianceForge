@@ -117,7 +117,17 @@ class AIClassifier:
 
     def __init__(self, api_key: Optional[str] = None, model: str = DEFAULT_MODEL):
         self.api_key = api_key or os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY")
-        self.provider = "anthropic" if (os.environ.get("ANTHROPIC_API_KEY")) else ("openai" if os.environ.get("OPENAI_API_KEY") else ("anthropic" if self.api_key else "offline"))
+        if os.environ.get("ANTHROPIC_API_KEY"):
+            self.provider = "anthropic"
+        elif os.environ.get("OPENAI_API_KEY"):
+            self.provider = "openai"
+        elif self.api_key:
+            # explicit key, no env: guess by prefix, never mix endpoints
+            self.provider = "openai" if self.api_key.startswith("sk-proj-") or (
+                self.api_key.startswith("sk-") and not self.api_key.startswith("sk-ant-")
+            ) else "anthropic"
+        else:
+            self.provider = "offline"
         self.model = os.environ.get("CF_LLM_MODEL", model)
         self.offline = self.api_key is None
         # Local LM is opt-in: heavy local models (e.g. gemma-4 reasoning) take
@@ -184,10 +194,16 @@ class AIClassifier:
             except Exception:
                 pass  # fall through to next layer
 
-        # 2 — cloud LLM
+        # 2 — cloud LLM, dispatched by credential provenance: an Anthropic key
+        # ONLY ever goes to Anthropic, an OpenAI key ONLY to OpenAI. (A prior
+        # version always called the Anthropic endpoint, so OpenAI-configured
+        # deployments silently fell through to heuristic.)
         if not self.offline and httpx is not None:
             try:
-                result = self._classify_anthropic(line)
+                if self.provider == "openai":
+                    result = self._classify_openai(line)
+                else:
+                    result = self._classify_anthropic(line)
                 result.setdefault("model_version", None)
                 return result
             except Exception as exc:

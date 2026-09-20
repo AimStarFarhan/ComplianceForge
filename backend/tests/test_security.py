@@ -79,22 +79,43 @@ def test_upload_rejects_executable(client):
 
 
 def test_auth_required_everywhere(client):
-    for path in ("/devices", "/dashboard", "/training/mappings", "/chat/status"):
+    for path in ("/devices", "/dashboard", "/training/mappings", "/training/decisions", "/chat/status"):
         r = client.get(path)
         assert r.status_code == 401, f"{path} must require auth, got {r.status_code}"
 
 
 def test_jwt_secret_required_in_prod():
-    # simulate prod without secret -> must refuse to boot
+    # without credentials AND without the explicit dev escape hatch -> refuse to boot
     import importlib
     import app.api.auth as auth_mod
-    os.environ["CF_ENV"] = "prod"
-    os.environ.pop("CF_JWT_SECRET", None)
+    old_dev = os.environ.pop("CF_DEV_ALLOW_DEFAULTS", None)
+    old_secret = os.environ.pop("CF_JWT_SECRET", None)
+    old_pw = os.environ.pop("CF_ADMIN_PASSWORD", None)
     try:
-        importlib.reload(auth_mod)  # re-evaluates _jwt_secret()
-        pytest.fail("auth must SystemExit in prod without CF_JWT_SECRET")
+        importlib.reload(auth_mod)  # re-evaluates credential loading
+        pytest.fail("auth must SystemExit without credentials and without CF_DEV_ALLOW_DEFAULTS=1")
     except SystemExit:
         pass
     finally:
-        os.environ["CF_ENV"] = "dev"
+        if old_dev is not None:
+            os.environ["CF_DEV_ALLOW_DEFAULTS"] = old_dev
+        if old_secret is not None:
+            os.environ["CF_JWT_SECRET"] = old_secret
+        if old_pw is not None:
+            os.environ["CF_ADMIN_PASSWORD"] = old_pw
+        importlib.reload(auth_mod)
+
+
+def test_dev_defaults_allowed_with_flag():
+    # with the explicit flag, dev defaults load (local demo + tests only)
+    import importlib
+    import app.api.auth as auth_mod
+    os.environ["CF_DEV_ALLOW_DEFAULTS"] = "1"
+    os.environ.pop("CF_JWT_SECRET", None)
+    os.environ.pop("CF_ADMIN_PASSWORD", None)
+    try:
+        importlib.reload(auth_mod)
+        assert auth_mod.login("admin", "admin") is not None
+        assert auth_mod.login("admin", "wrong") is None
+    finally:
         importlib.reload(auth_mod)

@@ -27,7 +27,32 @@
         "zone_policy": 0.882
       },
       "model_file": "model_v1.pkl",
-      "size_bytes": 835205
+      "size_bytes": 835205,
+      "sha256": "18580f3e880f744ae7dc8cf1612942af3768ad70780b59c1a6c2a2fe04bbaeb7",
+      "holdout_accuracy": 0.6994,
+      "holdout_f1": {
+        "aaa": 0.842,
+        "access_control": 0.467,
+        "acl_logging": 0.667,
+        "authentication": 0.706,
+        "banner": 1.0,
+        "cryptography": 0.333,
+        "interface_security": 0.375,
+        "logging": 0.182,
+        "management_protocol": 0.8,
+        "ntp": 0.824,
+        "password_policy": 0.909,
+        "privilege_escalation": 0.778,
+        "routing_integrity": 0.167,
+        "service_hardening": 0.8,
+        "snmp_management": 0.889,
+        "ssh_policy": 0.9,
+        "syslog": 0.842,
+        "unknown": 0.75,
+        "zone_policy": 0.706
+      },
+      "n_holdout": 163,
+      "status": "archived"
     },
     {
       "version": 2,
@@ -56,7 +81,32 @@
         "zone_policy": 0.882
       },
       "model_file": "model_v2.pkl",
-      "size_bytes": 835205
+      "size_bytes": 835205,
+      "sha256": "b8500d2200665659b6bbba742346180a2c2c31f741d2f0ee07b6100db1f61804",
+      "holdout_accuracy": 0.6994,
+      "holdout_f1": {
+        "aaa": 0.842,
+        "access_control": 0.467,
+        "acl_logging": 0.667,
+        "authentication": 0.706,
+        "banner": 1.0,
+        "cryptography": 0.333,
+        "interface_security": 0.375,
+        "logging": 0.182,
+        "management_protocol": 0.8,
+        "ntp": 0.824,
+        "password_policy": 0.909,
+        "privilege_escalation": 0.778,
+        "routing_integrity": 0.167,
+        "service_hardening": 0.8,
+        "snmp_management": 0.889,
+        "ssh_policy": 0.9,
+        "syslog": 0.842,
+        "unknown": 0.75,
+        "zone_policy": 0.706
+      },
+      "n_holdout": 163,
+      "status": "archived"
     },
     {
       "version": 3,
@@ -85,7 +135,32 @@
         "zone_policy": 0.882
       },
       "model_file": "model_v3.pkl",
-      "size_bytes": 835205
+      "size_bytes": 835205,
+      "sha256": "4e48bc583cff405092ec3dc3f6327330b5102c9685b42308b7f11235783c4e32",
+      "holdout_accuracy": 0.6994,
+      "holdout_f1": {
+        "aaa": 0.842,
+        "access_control": 0.467,
+        "acl_logging": 0.667,
+        "authentication": 0.706,
+        "banner": 1.0,
+        "cryptography": 0.333,
+        "interface_security": 0.375,
+        "logging": 0.182,
+        "management_protocol": 0.8,
+        "ntp": 0.824,
+        "password_policy": 0.909,
+        "privilege_escalation": 0.778,
+        "routing_integrity": 0.167,
+        "service_hardening": 0.8,
+        "snmp_management": 0.889,
+        "ssh_policy": 0.9,
+        "syslog": 0.842,
+        "unknown": 0.75,
+        "zone_policy": 0.706
+      },
+      "n_holdout": 163,
+      "status": "archived"
     },
     {
       "version": 4,
@@ -114,7 +189,32 @@
         "zone_policy": 0.889
       },
       "model_file": "model_v4.pkl",
-      "size_bytes": 841432
+      "size_bytes": 841432,
+      "sha256": "76add2e9f3bb31d8c4b27117f134cd55252170e3a8ffb2811d28deb76a0615dd",
+      "holdout_accuracy": 0.6994,
+      "holdout_f1": {
+        "aaa": 0.842,
+        "access_control": 0.483,
+        "acl_logging": 0.632,
+        "authentication": 0.667,
+        "banner": 1.0,
+        "cryptography": 0.333,
+        "interface_security": 0.375,
+        "logging": 0.182,
+        "management_protocol": 0.8,
+        "ntp": 0.824,
+        "password_policy": 0.909,
+        "privilege_escalation": 0.778,
+        "routing_integrity": 0.167,
+        "service_hardening": 0.8,
+        "snmp_management": 0.889,
+        "ssh_policy": 0.947,
+        "syslog": 0.842,
+        "unknown": 0.75,
+        "zone_policy": 0.706
+      },
+      "n_holdout": 163,
+      "status": "serving"
     },
     {
       "version": 5,
@@ -143,7 +243,32 @@
         "zone_policy": 0.889
       },
       "model_file": "model_v5.pkl",
-      "size_bytes": 841432
+      "size_bytes": 841432,
+      "sha256": "21468f62d3c2b2dac2edcb54f29ea1c1a65101f68ac6f003143b8c9a5f992780",
+      "holdout_accuracy": 0.6994,
+      "holdout_f1": {
+        "aaa": 0.842,
+        "access_control": 0.483,
+        "acl_logging": 0.632,
+        "authentication": 0.667,
+        "banner": 1.0,
+        "cryptography": 0.333,
+        "interface_security": 0.375,
+        "logging": 0.182,
+        "management_protocol": 0.8,
+        "ntp": 0.824,
+        "password_policy": 0.909,
+        "privilege_escalation": 0.778,
+        "routing_integrity": 0.167,
+        "service_hardening": 0.8,
+        "snmp_management": 0.889,
+        "ssh_policy": 0.947,
+        "syslog": 0.842,
+        "unknown": 0.75,
+        "zone_policy": 0.706
+      },
+      "n_holdout": 163,
+      "status": "archived"
     },
     {
       "version": 6,
@@ -172,7 +297,32 @@
         "zone_policy": 0.839
       },
       "model_file": "model_v6.pkl",
-      "size_bytes": 879137
+      "size_bytes": 879137,
+      "sha256": "86bc667a548db40971b899736b1255e0a3f65f91eb7bb26442cad1dbe03324a1",
+      "holdout_accuracy": 0.8712,
+      "holdout_f1": {
+        "aaa": 0.75,
+        "access_control": 0.9,
+        "acl_logging": 0.857,
+        "authentication": 1.0,
+        "banner": 1.0,
+        "cryptography": 0.8,
+        "interface_security": 0.762,
+        "logging": 0.471,
+        "management_protocol": 0.8,
+        "ntp": 0.941,
+        "password_policy": 1.0,
+        "privilege_escalation": 0.933,
+        "routing_integrity": 0.947,
+        "service_hardening": 0.857,
+        "snmp_management": 1.0,
+        "ssh_policy": 0.889,
+        "syslog": 0.909,
+        "unknown": 1.0,
+        "zone_policy": 0.75
+      },
+      "n_holdout": 163,
+      "status": "archived"
     },
     {
       "version": 7,
@@ -201,7 +351,32 @@
         "zone_policy": 0.839
       },
       "model_file": "model_v7.pkl",
-      "size_bytes": 879137
+      "size_bytes": 879137,
+      "sha256": "be1aa393724488e3324a2c61e69f58003c39d477a2ad02f55de1c1618e27c08c",
+      "holdout_accuracy": 0.8712,
+      "holdout_f1": {
+        "aaa": 0.75,
+        "access_control": 0.9,
+        "acl_logging": 0.857,
+        "authentication": 1.0,
+        "banner": 1.0,
+        "cryptography": 0.8,
+        "interface_security": 0.762,
+        "logging": 0.471,
+        "management_protocol": 0.8,
+        "ntp": 0.941,
+        "password_policy": 1.0,
+        "privilege_escalation": 0.933,
+        "routing_integrity": 0.947,
+        "service_hardening": 0.857,
+        "snmp_management": 1.0,
+        "ssh_policy": 0.889,
+        "syslog": 0.909,
+        "unknown": 1.0,
+        "zone_policy": 0.75
+      },
+      "n_holdout": 163,
+      "status": "archived"
     },
     {
       "version": 8,
@@ -230,7 +405,32 @@
         "zone_policy": 0.909
       },
       "model_file": "model_v8.pkl",
-      "size_bytes": 892530
+      "size_bytes": 892530,
+      "sha256": "9fb567ec4a0931b45fee7190e76f72c99a8406dd1da8bceeacfbc57a0dba4f40",
+      "holdout_accuracy": 0.8712,
+      "holdout_f1": {
+        "aaa": 0.824,
+        "access_control": 0.909,
+        "acl_logging": 0.923,
+        "authentication": 1.0,
+        "banner": 1.0,
+        "cryptography": 0.8,
+        "interface_security": 0.762,
+        "logging": 0.444,
+        "management_protocol": 0.714,
+        "ntp": 0.941,
+        "password_policy": 1.0,
+        "privilege_escalation": 1.0,
+        "routing_integrity": 0.947,
+        "service_hardening": 0.857,
+        "snmp_management": 1.0,
+        "ssh_policy": 0.889,
+        "syslog": 0.857,
+        "unknown": 1.0,
+        "zone_policy": 0.75
+      },
+      "n_holdout": 163,
+      "status": "archived"
     },
     {
       "version": 9,
@@ -259,7 +459,32 @@
         "zone_policy": 0.909
       },
       "model_file": "model_v9.pkl",
-      "size_bytes": 892530
+      "size_bytes": 892530,
+      "sha256": "01118b3ee56985a81905fb442275038e389b98d756c729629d12614bdf9fa087",
+      "holdout_accuracy": 0.8712,
+      "holdout_f1": {
+        "aaa": 0.824,
+        "access_control": 0.909,
+        "acl_logging": 0.923,
+        "authentication": 1.0,
+        "banner": 1.0,
+        "cryptography": 0.8,
+        "interface_security": 0.762,
+        "logging": 0.444,
+        "management_protocol": 0.714,
+        "ntp": 0.941,
+        "password_policy": 1.0,
+        "privilege_escalation": 1.0,
+        "routing_integrity": 0.947,
+        "service_hardening": 0.857,
+        "snmp_management": 1.0,
+        "ssh_policy": 0.889,
+        "syslog": 0.857,
+        "unknown": 1.0,
+        "zone_policy": 0.75
+      },
+      "n_holdout": 163,
+      "status": "archived"
     },
     {
       "version": 10,
@@ -288,7 +513,32 @@
         "zone_policy": 0.938
       },
       "model_file": "model_v10.pkl",
-      "size_bytes": 903302
+      "size_bytes": 903302,
+      "sha256": "15ac40e5146b41a6df488837e07c056bad7487a2aa5e70916004e2e86b270697",
+      "holdout_accuracy": 0.9202,
+      "holdout_f1": {
+        "aaa": 0.889,
+        "access_control": 0.8,
+        "acl_logging": 1.0,
+        "authentication": 0.857,
+        "banner": 1.0,
+        "cryptography": 0.947,
+        "interface_security": 0.857,
+        "logging": 0.824,
+        "management_protocol": 0.857,
+        "ntp": 0.941,
+        "password_policy": 0.952,
+        "privilege_escalation": 0.933,
+        "routing_integrity": 1.0,
+        "service_hardening": 0.857,
+        "snmp_management": 1.0,
+        "ssh_policy": 0.941,
+        "syslog": 0.947,
+        "unknown": 1.0,
+        "zone_policy": 0.9
+      },
+      "n_holdout": 163,
+      "status": "archived"
     },
     {
       "version": 11,
@@ -317,7 +567,32 @@
         "zone_policy": 0.938
       },
       "model_file": "model_v11.pkl",
-      "size_bytes": 896526
+      "size_bytes": 896526,
+      "sha256": "57abab9fd62321fb1ab305f6eb567e1b14e05dd43c18b939c4471da66de1c8c0",
+      "holdout_accuracy": 0.9141,
+      "holdout_f1": {
+        "aaa": 0.842,
+        "access_control": 0.737,
+        "acl_logging": 0.923,
+        "authentication": 0.933,
+        "banner": 1.0,
+        "cryptography": 0.952,
+        "interface_security": 0.857,
+        "logging": 0.667,
+        "management_protocol": 0.923,
+        "ntp": 0.933,
+        "password_policy": 1.0,
+        "privilege_escalation": 0.933,
+        "routing_integrity": 1.0,
+        "service_hardening": 0.933,
+        "snmp_management": 1.0,
+        "ssh_policy": 0.941,
+        "syslog": 0.947,
+        "unknown": 0.933,
+        "zone_policy": 0.9
+      },
+      "n_holdout": 163,
+      "status": "archived"
     },
     {
       "version": 12,
@@ -346,7 +621,32 @@
         "zone_policy": 0.938
       },
       "model_file": "model_v12.pkl",
-      "size_bytes": 887307
+      "size_bytes": 887307,
+      "sha256": "bf36dbb73f0657aa244b9e54126b52aa0c4e6c15e353799cbd0cb33a244ad082",
+      "holdout_accuracy": 0.908,
+      "holdout_f1": {
+        "aaa": 0.842,
+        "access_control": 0.737,
+        "acl_logging": 0.923,
+        "authentication": 1.0,
+        "banner": 1.0,
+        "cryptography": 0.9,
+        "interface_security": 0.857,
+        "logging": 0.533,
+        "management_protocol": 0.857,
+        "ntp": 0.933,
+        "password_policy": 1.0,
+        "privilege_escalation": 0.857,
+        "routing_integrity": 1.0,
+        "service_hardening": 0.933,
+        "snmp_management": 1.0,
+        "ssh_policy": 1.0,
+        "syslog": 0.952,
+        "unknown": 0.933,
+        "zone_policy": 0.947
+      },
+      "n_holdout": 163,
+      "status": "archived"
     },
     {
       "version": 13,
@@ -375,7 +675,32 @@
         "zone_policy": 0.938
       },
       "model_file": "model_v13.pkl",
-      "size_bytes": 887307
+      "size_bytes": 887307,
+      "sha256": "7372a7d5a9ab1e41b8e96a15bf6bba4a81eb853b3e9b9ac8ce03f84706e32fb8",
+      "holdout_accuracy": 0.908,
+      "holdout_f1": {
+        "aaa": 0.842,
+        "access_control": 0.737,
+        "acl_logging": 0.923,
+        "authentication": 1.0,
+        "banner": 1.0,
+        "cryptography": 0.9,
+        "interface_security": 0.857,
+        "logging": 0.533,
+        "management_protocol": 0.857,
+        "ntp": 0.933,
+        "password_policy": 1.0,
+        "privilege_escalation": 0.857,
+        "routing_integrity": 1.0,
+        "service_hardening": 0.933,
+        "snmp_management": 1.0,
+        "ssh_policy": 1.0,
+        "syslog": 0.952,
+        "unknown": 0.933,
+        "zone_policy": 0.947
+      },
+      "n_holdout": 163,
+      "status": "archived"
     }
   ],
   "current_version": 4
