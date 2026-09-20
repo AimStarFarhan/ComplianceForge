@@ -44,10 +44,16 @@ def _build_engine() -> Engine:
     if url and url.startswith(_POSTGRES_SCHEMES):
         # Neon/managed PG: connections are killed after a few minutes idle,
         # so pre-ping + short recycle keeps serverless invocations healthy.
+        # prepare_threshold=None: managed PG is usually behind PgBouncer in
+        # transaction-pooling mode, where server-side prepared statements
+        # fail with DuplicatePreparedStatement (psycopg3 prepares by
+        # default). Disabling them is the documented fix; plain queries
+        # are unaffected.
         return create_engine(
             _normalize_postgres_url(url),
             pool_pre_ping=True,
             pool_recycle=280,
+            connect_args={"prepare_threshold": None},
             echo=False,
         )
     if url:  # explicit sqlite:// URL
