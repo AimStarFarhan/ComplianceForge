@@ -447,6 +447,11 @@ def confirm_mapping(
 ):
     if req.category not in SECURITY_CATEGORIES:
         raise HTTPException(422, f"Unknown category '{req.category}'. Valid: {SECURITY_CATEGORIES}")
+    if req.category == "unknown":
+        raise HTTPException(
+            422, "'unknown' is never accepted as a confirmed mapping — "
+            "leave the line unresolved until its true category is known."
+        )
     who = str(reviewer.get("sub", "admin"))
     # Server-side proposal: identity + provenance can never be forged by the client.
     proposal = _proposal_for(req.example_line, db, req.vendor_hint)

@@ -432,3 +432,13 @@ def test_trained_vendors_record_and_revoke(auth):
     # second revoke: nothing left to remove
     r = c.post(f"/training/vendors/{vendor}/revoke", headers=h)
     assert r.status_code == 404
+
+
+def test_single_confirm_rejects_unknown_category(auth):
+    c, h = auth
+    r = c.post("/training/confirm", json={
+        "example_line": "compilerai-probe mystery syntax line",
+        "category": "unknown",
+        "vendor_hint": "compilerai-probe-os",
+    }, headers=h)
+    assert r.status_code == 422, r.text
