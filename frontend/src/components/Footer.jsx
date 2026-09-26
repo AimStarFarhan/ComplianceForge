@@ -24,8 +24,7 @@ export default function Footer() {
         </div>
       </div>
       <div className="flex items-center gap-3 text-sageMuted font-mono text-[11px]">
-        <span className="px-2 py-0.5 rounded bg-olivePanel text-softSage border border-camoSeam">CONFIDENTIAL</span>
-        <span>© 2026 ComplianceForge</span>
+        <span>ComplianceForge v1.0.0</span>
       </div>
     </footer>
   );

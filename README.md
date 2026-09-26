@@ -57,9 +57,9 @@ Or on Windows: double-click `launch.bat` (starts both, installs deps if missing)
 ```
 backend/           FastAPI app — parsers, rule engine, rule packs, AI layer, reports, tests
   sample_configs/  synthetic compliant/noncompliant fixtures (6 files, 3 vendors)
-frontend/          React control-plane UI (Tactical Field Telemetry design system)
+frontend/          React control-plane UI
 docs/              ARCHITECTURE.md (≤2 pages), README
-demo/              unseen_vendor_config.txt (live judge demo fixture)
+demo/              unseen_vendor_config.txt (demo fixture)
 ```
 
 ## Environment variables

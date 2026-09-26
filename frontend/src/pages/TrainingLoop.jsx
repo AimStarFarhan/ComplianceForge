@@ -43,7 +43,7 @@ function ClusterCard({ cluster, onConfirmCluster, busy }) {
           </details>
         </div>
         <div className="text-right shrink-0">
-          <div className="label-xs">CompilerAI Proposal</div>
+          <div className="label-xs">AI Proposal</div>
           <div className="font-mono text-xs mt-0.5 font-bold" style={{ color: low ? "var(--warn)" : "var(--pass)" }}>
             {cluster.ai_category || "—"} {cluster.ai_confidence != null && `(${Math.round(cluster.ai_confidence * 100)}%)`}
           </div>
@@ -53,10 +53,10 @@ function ClusterCard({ cluster, onConfirmCluster, busy }) {
       <div className="flex items-center gap-2 flex-wrap">
         <select className="input-field !w-64 !py-1.5 text-xs font-mono" value={selected} onChange={(e) => setSelected(e.target.value)}>
           {CATEGORIES.map((c) => (
-            <option key={c} value={c}>{c}{c === proposed ? "  (CompilerAI proposal)" : ""}</option>
+            <option key={c} value={c}>{c}{c === proposed ? "  (AI proposal)" : ""}</option>
           ))}
         </select>
-        <button disabled={busy || isUnknown} onClick={() => onConfirmCluster(cluster, selected, note)} className="btn-primary !py-1.5" title={isCorrection ? "Save your correction for all lines in this pattern" : "Agree with the CompilerAI proposal for all lines in this pattern"}>
+        <button disabled={busy || isUnknown} onClick={() => onConfirmCluster(cluster, selected, note)} className="btn-primary !py-1.5" title={isCorrection ? "Save your correction for all lines in this pattern" : "Agree with the AI proposal for all lines in this pattern"}>
           <span className="material-symbols-outlined text-[15px]">{isCorrection ? "edit" : "done_all"}</span>
           <span>{isCorrection ? `Save Correction (×${cluster.count})` : `Confirm Proposal (×${cluster.count})`}</span>
         </button>
@@ -96,7 +96,7 @@ function QueueCard({ entry, onConfirm, onSkip, busy }) {
           </div>
         </div>
         <div className="text-right shrink-0">
-          <div className="label-xs">CompilerAI Proposal</div>
+          <div className="label-xs">AI Proposal</div>
           <div className="font-mono text-xs mt-0.5 font-bold" style={{ color: low ? "var(--warn)" : "var(--pass)" }}>
             {entry.ai_category || "—"} {entry.ai_confidence != null && `(${Math.round(entry.ai_confidence * 100)}%)`}
           </div>
@@ -106,10 +106,10 @@ function QueueCard({ entry, onConfirm, onSkip, busy }) {
       <div className="flex items-center gap-2 flex-wrap">
         <select className="input-field !w-64 !py-1.5 text-xs font-mono" value={selected} onChange={(e) => setSelected(e.target.value)}>
           {CATEGORIES.map((c) => (
-            <option key={c} value={c}>{c}{c === proposed ? "  (CompilerAI proposal)" : ""}</option>
+            <option key={c} value={c}>{c}{c === proposed ? "  (AI proposal)" : ""}</option>
           ))}
         </select>
-        <button disabled={busy || isUnknown} onClick={() => onConfirm(entry, selected, note)} className="btn-primary !py-1.5" title={isUnknown ? "Pick a real category — 'unknown' stays queued" : isCorrection ? "Save your correction — logged as a correction, not a confirm" : "Agree with the CompilerAI proposal"}>
+        <button disabled={busy || isUnknown} onClick={() => onConfirm(entry, selected, note)} className="btn-primary !py-1.5" title={isUnknown ? "Pick a real category — 'unknown' stays queued" : isCorrection ? "Save your correction — logged as a correction, not a confirm" : "Agree with the AI proposal"}>
           <span className="material-symbols-outlined text-[15px]">{isCorrection ? "edit" : "check"}</span>
           <span>{isCorrection ? "Save Correction" : "Confirm Proposal"}</span>
         </button>
@@ -131,7 +131,7 @@ function QueueCard({ entry, onConfirm, onSkip, busy }) {
       )}
       {isCorrection && !isUnknown && (
         <div className="font-mono text-[10px] mt-1.5 text-sprucePine font-bold uppercase tracking-wider">
-          You changed CompilerAI&apos;s proposal ({proposed} → {selected}) — this will be logged as a correction.
+          You changed the AI proposal ({proposed} → {selected}) — this will be logged as a correction.
         </div>
       )}
       <div className="font-mono text-[9px] text-taupe-muted mt-2 uppercase tracking-wider">
@@ -142,7 +142,7 @@ function QueueCard({ entry, onConfirm, onSkip, busy }) {
 }
 
 export default function TrainingLoop() {
-  const { data: queueData, loading, reload: reloadQueue } = useApi("/training/queue");
+  const { data: queueData, loading, error: queueError, reload: reloadQueue } = useApi("/training/queue");
   const { data: mappingData, reload: reloadMappings } = useApi("/training/mappings");
   const { data: vendorData, reload: reloadVendors } = useApi("/training/vendors");
   const { data: decisionData, reload: reloadDecisions } = useApi("/training/decisions?limit=50");
@@ -213,6 +213,19 @@ export default function TrainingLoop() {
         toast("Nothing approvable — rows left as 'unknown' stay queued for individual review.");
         return;
       }
+      // Pre-check the server's low-confidence gate: unchanged rows whose
+      // proposal is below 0.7 need the "I reviewed every row" tick, or the
+      // whole batch 422s and nothing is written.
+      const needTick = (approvableByDevice[deviceId] || []).filter((e) => {
+        const cat = rowCat(deviceId, e);
+        return cat && cat !== "unknown" && cat === e.ai_category && (e.ai_confidence ?? 0) < 0.7;
+      });
+      if (needTick.length && !bulkReviewed[deviceId]) {
+        toast(
+          `${needTick.length} line(s) carry low-confidence proposals — tick "I reviewed every row above" (you've seen each row) or edit their category, then approve again.`
+        );
+        return;
+      }
       const res = await api("/training/train-device", {
         method: "POST",
         body: { device_id: deviceId, approvals },
@@ -226,6 +239,28 @@ export default function TrainingLoop() {
       reloadVendors();
       reloadDecisions();
     } catch (e) {
+      // Server rejects with structured {message, errors} — translate the
+      // common gate failure into the exact UI fix instead of raw JSON.
+      try {
+        const parsed = JSON.parse(e.message);
+        const detail = parsed.detail || parsed;
+        if (detail && Array.isArray(detail.errors) && detail.errors.length) {
+          const gated = detail.errors.filter((x) => String(x).includes("human_reviewed")).length;
+          if (gated) {
+            toast(
+              `${gated} line(s) need explicit review — tick "I reviewed every row above" (or edit their category), then approve again. Nothing was written.`
+            );
+            return;
+          }
+          toast(
+            `Bulk approve rejected: ${detail.errors.slice(0, 2).join(" ")}` +
+              (detail.errors.length > 2 ? ` (+${detail.errors.length - 2} more)` : "")
+          );
+          return;
+        }
+      } catch {
+        /* not JSON — fall through to raw message */
+      }
       toast(`Bulk approve failed: ${e.message}`);
     } finally {
       setBusy(false);
@@ -301,11 +336,11 @@ export default function TrainingLoop() {
   };
 
   const revokeVendor = async (vendor) => {
-    if (!window.confirm(`Revoke CompilerAI access to '${vendor}'? ${vendorData?.vendors?.find((v) => v.vendor === vendor)?.mappings ?? ""} learned mappings will be removed and its lines return to the queue as unknown.`)) return;
+    if (!window.confirm(`Revoke learned access to '${vendor}'? ${vendorData?.vendors?.find((v) => v.vendor === vendor)?.mappings ?? ""} learned mappings will be removed and its lines return to the queue as unknown.`)) return;
     setBusy(true);
     try {
       const res = await api(`/training/vendors/${encodeURIComponent(vendor)}/revoke`, { method: "POST" });
-      toast(`Revoked '${vendor}' — ${res.removed_mappings} mappings removed. CompilerAI no longer recognizes it.`);
+      toast(`Revoked '${vendor}' — ${res.removed_mappings} mappings removed. The vendor is unknown again.`);
       reloadMappings();
       reloadQueue();
       reloadVendors();
@@ -331,11 +366,10 @@ export default function TrainingLoop() {
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-display text-xl text-peatCharcoal font-bold tracking-tight">CompilerAI — Human-in-the-Loop Learning</span>
-                <span className="px-2 py-0.5 rounded bg-sprucePine text-[#FCF9F0] font-mono text-[10px] font-bold uppercase tracking-wider">CompilerAI</span>
+                <span className="font-display text-xl text-peatCharcoal font-bold tracking-tight">Human-in-the-Loop Learning</span>
               </div>
               <div className="font-mono text-xs text-taupe-muted mt-2 max-w-2xl leading-relaxed">
-                <strong className="text-peatCharcoal">CompilerAI</strong> compiles unknown vendor syntax into known
+                <strong className="text-peatCharcoal">The training loop</strong> compiles unknown vendor syntax into known
                 categories — but it <strong className="text-peatCharcoal">never issues pass/fail verdicts</strong>. It only proposes
                 categories for lines the deterministic parsers couldn't map — a named admin confirms before anything
                 enters the learned rule cache. Once trained, the same unknown syntax auto-recognizes on re-ingest.
@@ -353,7 +387,7 @@ export default function TrainingLoop() {
             </div>
             <div className="text-center">
               <div className="font-display text-4xl font-bold text-mutedMeadow leading-none">{aiConfirmed}</div>
-              <div className="label-xs mt-1.5">CompilerAI + Human</div>
+              <div className="label-xs mt-1.5">AI + Human</div>
             </div>
           </div>
         </div>
@@ -362,9 +396,9 @@ export default function TrainingLoop() {
       {/* Bulk review — a real per-line review table, not blind approval */}
       {Object.keys(approvableByDevice).length > 0 && (
         <section className="card p-4 border-l-4 border-l-sprucePine">
-          <div className="label-md mb-1">Bulk Review — review every line, correct where CompilerAI is wrong</div>
+          <div className="label-md mb-1">Bulk Review — review every line, correct where the proposal is wrong</div>
           <div className="font-mono text-[10px] text-taupe-muted mb-3 uppercase tracking-wider">
-            Each row shows CompilerAI&apos;s proposal — change the dropdown wherever you disagree, then preview and approve.
+            Each row shows the AI proposal — change the dropdown wherever you disagree, then preview and approve.
             Rows left as &apos;unknown&apos; are never approved and stay queued.
           </div>
           <div className="space-y-3">
@@ -396,7 +430,7 @@ export default function TrainingLoop() {
                         <tr>
                           <th>Line</th>
                           <th>Raw CLI</th>
-                          <th>CompilerAI proposal</th>
+                          <th>AI proposal</th>
                           <th>Your review (change if wrong)</th>
                         </tr>
                       </thead>
@@ -465,6 +499,13 @@ export default function TrainingLoop() {
           )}
         </div>
         {loading && <div className="font-mono text-xs text-taupe-muted">Clustering patterns…</div>}
+        {queueError && !loading && (
+          <div className="card p-4 flex items-center gap-3 border-l-4 border-l-terracottaRust">
+            <span className="font-mono text-xs text-terracottaRust">Queue failed to load: {queueError}</span>
+            <span className="flex-1" />
+            <button onClick={reloadQueue} className="btn-primary !py-1.5">Retry</button>
+          </div>
+        )}
         {(queueData?.clusters || []).map((cluster) => (
           <ClusterCard key={cluster.pattern} cluster={cluster} onConfirmCluster={confirmCluster} busy={busy} />
         ))}
@@ -479,6 +520,11 @@ export default function TrainingLoop() {
       <section className="space-y-3">
         <div className="label-md">Unrecognized Lines Awaiting Review (flat view)</div>
         {loading && <div className="font-mono text-xs text-taupe-muted">Loading queue…</div>}
+        {queueError && !loading && (queueData?.queue || []).length === 0 && (
+          <div className="font-mono text-xs text-terracottaRust">
+            Queue failed to load: {queueError} — <button onClick={reloadQueue} className="underline font-bold">retry</button>
+          </div>
+        )}
         {(queueData?.queue || []).map((entry, i) => (
           <QueueCard key={`${entry.device_id}-${entry.line_number}-${i}`} entry={entry} onConfirm={confirm} onSkip={skip} busy={busy} />
         ))}
@@ -524,7 +570,7 @@ export default function TrainingLoop() {
                     <td className="font-mono text-[11px]">{m.category}</td>
                     <td>
                       {m.ai_suggested ? (
-                          <span className="badge bg-sprucePine text-[#FCF9F0]">COMPILERAI + HUMAN</span>
+                          <span className="badge bg-sprucePine text-[#FCF9F0]">AI + HUMAN</span>
                       ) : (
                         <span className="status-na">HUMAN</span>
                       )}
@@ -559,10 +605,10 @@ export default function TrainingLoop() {
       {/* Trained vendors — past unknown-vendor trains, revocable */}
       <section className="space-y-3">
         <div className="label-md flex items-center justify-between">
-          <span>Trained Vendors — what CompilerAI has learned (revocable)</span>
+          <span>Trained Vendors — learned syntax (revocable)</span>
           {(vendorData?.vendors?.length ?? 0) > 0 && (
             <span className="font-mono text-[10px] text-taupe-muted">
-              {vendorData.vendors.length} vendor{(vendorData.vendors.length || 0) === 1 ? "" : "s"} known to CompilerAI
+              {vendorData.vendors.length} vendor{(vendorData.vendors.length || 0) === 1 ? "" : "s"} known
             </span>
           )}
         </div>
@@ -606,14 +652,14 @@ export default function TrainingLoop() {
           </div>
         </div>
         <div className="font-mono text-[10px] text-taupe-muted uppercase tracking-wider">
-          Revoking removes CompilerAI&apos;s access to that vendor&apos;s syntax — its lines return to the queue as unknown. History is preserved below.
+          Revoking removes learned access to that vendor&apos;s syntax — its lines return to the queue as unknown. History is preserved below.
         </div>
       </section>
 
       {/* Decision log — immutable human-review audit trail */}
       <section className="space-y-3">
         <div className="label-md flex items-center justify-between">
-          <span>CompilerAI Decision Log — who confirmed what (immutable)</span>
+          <span>Decision Log — who confirmed what (immutable)</span>
           {(decisionData?.decisions?.length ?? 0) > 0 && (
             <span className="font-mono text-[10px] text-taupe-muted">
               {decisionData.decisions.length} latest decision{(decisionData.decisions.length || 0) === 1 ? "" : "s"}
@@ -627,7 +673,7 @@ export default function TrainingLoop() {
                 <tr>
                   <th>Line</th>
                   <th>Decided Category</th>
-                  <th>CompilerAI Proposed</th>
+                  <th>AI Proposed</th>
                   <th>Decision</th>
                   <th>Reviewer</th>
                   <th>At</th>

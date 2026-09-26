@@ -33,8 +33,7 @@ npm install
 npm run dev        # http://localhost:5173
 ```
 
-The UI ships with two themes (toggle in the sidebar):
-**Forensic Monochrome** (light) and **Industrial Telemetry** (dark).
+The UI ships with light and dark themes (toggle in the sidebar).
 
 ### 3. Run the demo flow
 
@@ -48,7 +47,7 @@ The UI ships with two themes (toggle in the sidebar):
    auto-matches without re-asking.
 5. **Reports & Evidence** → export the per-device PDF.
 
-### Live "unseen vendor" demo (for judges)
+### Live "unseen vendor" demo
 
 Keep `demo/unseen_vendor_config.txt` untouched during development. In the
 demo, ingest it: the syntax fingerprints route it to the *unseen vendor* path,
@@ -84,7 +83,7 @@ backend/           FastAPI app, parsers, rule engine, rule packs, AI layer, repo
   sample_configs/  synthetic compliant/noncompliant fixtures (6 files)
 frontend/          React control-plane UI (Dashboard, Devices, Training Loop, Reports)
 docs/              ARCHITECTURE.md (≤2 pages), README
-demo/              unseen_vendor_config.txt (live judge demo), sample PDF
+demo/              unseen_vendor_config.txt (live demo), sample PDF
 ```
 
 ## Honest AI claims

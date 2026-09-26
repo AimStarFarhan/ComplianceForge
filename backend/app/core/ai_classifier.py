@@ -136,10 +136,16 @@ class AIClassifier:
         self.use_local_lm = os.environ.get("CF_USE_LOCAL_LM", "0") == "1"
 
     # ------------------------------------------------------------------ public
-    def classify(self, line: str, db=None, vendor_hint: str = "any") -> dict:
+    def classify(self, line: str, db=None, vendor_hint: str = "any", fast: bool = False) -> dict:
         """Unified L1 -> L2 -> L3 chain. Never raises.
 
         L1 needs a DB session (passed by routes); without one, starts at L2.
+        fast=True skips the slow neural L3 layers (local LM + cloud LLM) and
+        falls straight back to the instant keyword heuristic. Listing paths
+        (training queue, ingest enrichment, confirm-time provenance) use it:
+        a human reviews every proposal anyway, so waiting up to 90s per
+        pattern on a local reasoning model is pure dead time. Interactive
+        single-line calls keep the full chain.
         """
         # L1 — exact cache (bounded, high-precision only)
         if db is not None:
@@ -181,12 +187,12 @@ class AIClassifier:
             pass  # fall through to L3
 
         # L3 — local LM / cloud LLM / heuristic (true zero-shot only)
-        return self._classify_l3(line)
+        return self._classify_l3(line, allow_neural=not fast)
 
-    def _classify_l3(self, line: str) -> dict:
+    def _classify_l3(self, line: str, allow_neural: bool = True) -> dict:
         """Previous LLM+heuristic fallback chain, now explicitly L3."""
         # 1 — local LM, only when explicitly enabled (it's slow on most hardware)
-        if self.use_local_lm and httpx is not None:
+        if allow_neural and self.use_local_lm and httpx is not None:
             try:
                 result = self._classify_local_lm(line)
                 result.setdefault("model_version", None)
@@ -198,7 +204,7 @@ class AIClassifier:
         # ONLY ever goes to Anthropic, an OpenAI key ONLY to OpenAI. (A prior
         # version always called the Anthropic endpoint, so OpenAI-configured
         # deployments silently fell through to heuristic.)
-        if not self.offline and httpx is not None:
+        if allow_neural and not self.offline and httpx is not None:
             try:
                 if self.provider == "openai":
                     result = self._classify_openai(line)

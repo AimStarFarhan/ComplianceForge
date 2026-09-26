@@ -200,7 +200,7 @@ export default function Dashboard() {
           <span className="material-symbols-outlined text-sprucePine text-[22px]">history</span>
           <div className="flex-1">
             <span className="font-display text-sm font-bold text-peatCharcoal">Audit History — devices through the audit tests</span>
-            <span className="font-sans text-xs text-taupe-muted block">Newest run first · pass/fail per audit · provisional flags on CompilerAI-learned evidence</span>
+            <span className="font-sans text-xs text-taupe-muted block">Newest run first · pass/fail per audit · provisional flags on AI-learned evidence</span>
           </div>
           {(data?.recent_audits?.length ?? 0) > 0 && (
             <span className="font-mono text-[10px] text-taupe-muted">{data.recent_audits.length} latest runs</span>
