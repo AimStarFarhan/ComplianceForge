@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { api } from "./api";
 import { useToast } from "../components/Toast";
 
@@ -128,9 +128,10 @@ export function JobsProvider({ children }) {
     []
   );
 
-  return (
-    <JobsCtx.Provider value={{ jobs, startIngest, clearFinished, ACTIVE }}>
-      {children}
-    </JobsCtx.Provider>
+  const value = useMemo(
+    () => ({ jobs, startIngest, clearFinished, ACTIVE }),
+    [jobs, startIngest, clearFinished]
   );
+
+  return <JobsCtx.Provider value={value}>{children}</JobsCtx.Provider>;
 }

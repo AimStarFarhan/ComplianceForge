@@ -33,22 +33,43 @@ async function healthOnce(timeoutMs = 8000) {
   }
 }
 
+// Stable component identity (defined outside App): if this were declared
+// inside App, every elapsed/attempt tick would remount the whole console.
+function ConsoleGate({ ready, attempt, elapsed, failed, onReady }) {
+  if (ready) return <ConsoleLayout />;
+  return (
+    <WarmupSplash
+      attempt={attempt}
+      elapsed={elapsed}
+      failed={failed}
+      onRetry={() => window.location.reload()}
+      onContinue={onReady}
+    />
+  );
+}
+
 export default function App() {
   const [backend, setBackend] = useState("checking"); // checking | ready
   const [attempt, setAttempt] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const stopRef = useRef(false);
+  const readyRef = useRef(false);
 
   useEffect(() => {
     stopRef.current = false;
     const t0 = Date.now();
-    const tick = setInterval(() => setElapsed(Math.round((Date.now() - t0) / 1000)), 1000);
+    const tick = setInterval(() => {
+      if (!readyRef.current) setElapsed(Math.round((Date.now() - t0) / 1000));
+    }, 1000);
     (async () => {
       try { await ensureLogin(); } catch {}
       for (let i = 1; i <= MAX_ATTEMPTS && !stopRef.current; i++) {
         setAttempt(i);
         if (await healthOnce()) {
-          if (!stopRef.current) setBackend("ready");
+          if (!stopRef.current) {
+            readyRef.current = true;
+            setBackend("ready");
+          }
           break;
         }
         if (i < MAX_ATTEMPTS && !stopRef.current) {
@@ -64,18 +85,6 @@ export default function App() {
   // Landing renders instantly; only /console waits for the backend:
   // landing page ──▶ backend waking up ──▶ console.
   // Polling starts on mount, so the backend is usually warm by click time.
-  const ConsoleGate = () =>
-    backend === "ready" ? (
-      <ConsoleLayout />
-    ) : (
-      <WarmupSplash
-        attempt={attempt}
-        elapsed={elapsed}
-        failed={failed}
-        onRetry={() => window.location.reload()}
-        onContinue={() => setBackend("ready")}
-      />
-    );
 
   return (
     <ThemeProvider>
@@ -87,7 +96,21 @@ export default function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           {/* Embedded ComplianceForge console (gated on backend health) */}
-          <Route path="/console" element={<ConsoleGate />}>
+          <Route
+            path="/console"
+            element={
+              <ConsoleGate
+                ready={backend === "ready"}
+                attempt={attempt}
+                elapsed={elapsed}
+                failed={failed}
+                onReady={() => {
+                  readyRef.current = true;
+                  setBackend("ready");
+                }}
+              />
+            }
+          >
             <Route index element={<Dashboard />} />
             <Route path="devices" element={<Devices />} />
             <Route path="devices/:deviceId" element={<DeviceDetail />} />
