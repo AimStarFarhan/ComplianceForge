@@ -278,6 +278,51 @@ def test_bulk_dry_run_writes_nothing(auth):
     assert c.get("/training/decisions?limit=500", headers=h).json()["decisions"] == before_d
 
 
+def test_bulk_partial_approval_writes_and_lists_unresolved(auth):
+    # Regression: approving a SUBSET used to 500 (sorted() over dicts) in
+    # both dry-run and real mode whenever ≥2 lines stayed unresolved.
+    # Self-contained lines: unique middle token keeps patterns collision-free
+    # with other tests; the "set admin-" prefix keeps the module fixture's
+    # re-run cleanup effective.
+    c, h = auth
+    tag = 44
+    lines = [
+        (f"set admin-partial{tag} latch-port {100 + tag}", "management_protocol"),
+        (f"set admin-partial{tag} cipher-string {200 + tag}", "cryptography"),
+        (f"set admin-partial{tag} banner-line {300 + tag}", "banner"),
+        (f"set admin-partial{tag} tick-source {400 + tag}", "ntp"),
+    ]
+    info = _upload(c, h, "\n".join(t for t, _ in lines) + "\n", "mini.cfg", "trust-bulk-partial")
+    assert info["is_unknown_vendor"] is True
+    mine = [e for e in c.get("/training/queue", headers=h).json()["queue"]
+            if e["device_id"] == "trust-bulk-partial"]
+    assert len(mine) == 4
+    by_raw = {t: cat for t, cat in lines}
+    approvals = [{
+        "line_number": e["line_number"], "raw_line": e["raw_line"],
+        "category": by_raw[e["raw_line"]], "human_reviewed": True} for e in mine[:2]]
+    # dry-run with leftovers must not crash either
+    r = c.post("/training/train-device",
+               json={"device_id": "trust-bulk-partial", "approvals": approvals, "dry_run": True},
+               headers=h)
+    assert r.status_code == 200, r.text
+    assert r.json()["unresolved_remaining"] == 2
+    # real run writes the 2, lists the other 2 unresolved
+    r = c.post("/training/train-device",
+               json={"device_id": "trust-bulk-partial", "approvals": approvals},
+               headers=h)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["trained_lines"] == 2
+    assert body["unresolved_remaining"] == 2
+    assert len(body["unresolved"]) == 2
+    # approved lines leave this device's queue; the rest stay
+    rest = [e for e in c.get("/training/queue", headers=h).json()["queue"]
+            if e["device_id"] == "trust-bulk-partial"]
+    assert len(rest) == 2
+    assert {e["raw_line"] for e in rest} == {e["raw_line"] for e in mine[2:]}
+
+
 def test_bulk_happy_path_then_provenance_and_provisional(auth):
     c, h = auth
     mine = _ingest_queue(c, h, "trust-bulk-e2e", 33)
