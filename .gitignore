@@ -38,11 +38,7 @@ backend/verify_final.db
 
 .vercel
 
-# Local working notes & slide assets (kept locally, never pushed)
-/SWITCH_CONTEXT.md
-/PROJECT_ANALYSIS.md
-/PROJECT_FULL_ANALYSIS.md
-/PRESENTATION_SCRIPT.md
+# Local-only artifacts (kept locally, never pushed)
 /login.json
 /demo/sample_report_noncompliant.pdf
 docs/workflow-*.svg
