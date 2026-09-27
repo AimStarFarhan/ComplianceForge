@@ -214,7 +214,7 @@
         "zone_policy": 0.706
       },
       "n_holdout": 163,
-      "status": "serving"
+      "status": "superseded"
     },
     {
       "version": 5,
@@ -592,7 +592,7 @@
         "zone_policy": 0.9
       },
       "n_holdout": 163,
-      "status": "archived"
+      "status": "serving"
     },
     {
       "version": 12,
@@ -701,7 +701,62 @@
       },
       "n_holdout": 163,
       "status": "archived"
+    },
+    {
+      "version": 14,
+      "trained_at": "2026-09-24T11:14:17.706914+00:00",
+      "n_examples": 1163,
+      "n_holdout_excluded": 163,
+      "accuracy": 0.7897,
+      "per_category_f1": {
+        "aaa": 0.846,
+        "access_control": 0.667,
+        "acl_logging": 0.667,
+        "authentication": 0.588,
+        "banner": 1.0,
+        "cryptography": 0.667,
+        "interface_security": 0.8,
+        "logging": 0.381,
+        "management_protocol": 0.833,
+        "ntp": 0.917,
+        "password_policy": 0.812,
+        "privilege_escalation": 0.909,
+        "routing_integrity": 0.769,
+        "service_hardening": 0.778,
+        "snmp_management": 0.897,
+        "ssh_policy": 0.917,
+        "syslog": 0.71,
+        "unknown": 0.727,
+        "zone_policy": 1.0
+      },
+      "holdout_accuracy": 0.7975,
+      "holdout_f1": {
+        "aaa": 0.706,
+        "access_control": 0.632,
+        "acl_logging": 0.857,
+        "authentication": 0.8,
+        "banner": 1.0,
+        "cryptography": 0.636,
+        "interface_security": 0.706,
+        "logging": 0.5,
+        "management_protocol": 0.625,
+        "ntp": 0.933,
+        "password_policy": 0.9,
+        "privilege_escalation": 0.8,
+        "routing_integrity": 0.889,
+        "service_hardening": 0.933,
+        "snmp_management": 1.0,
+        "ssh_policy": 0.824,
+        "syslog": 0.842,
+        "unknown": 0.75,
+        "zone_policy": 0.857
+      },
+      "n_holdout": 163,
+      "sha256": "2b565654ba09b409d7ed5c7c8c615026daaa70682c45bcc12e7db59f8e91324b",
+      "status": "rejected",
+      "model_file": "model_v14.pkl",
+      "size_bytes": 811213
     }
   ],
-  "current_version": 4
+  "current_version": 11
 }

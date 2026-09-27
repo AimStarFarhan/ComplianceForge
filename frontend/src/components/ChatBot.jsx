@@ -57,7 +57,7 @@ function Bubble({ role, text, source }) {
         {!isUser && source && (
           <div className="mt-1.5 pt-1.5 border-t border-[var(--line-soft)] font-mono text-[9px] uppercase text-[var(--ink-faint)] flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--pass)" }}></span>
-            {source === "local_lm" ? "CompilerAI · Local LM · grounded in audit data" : source === "llm" ? "CompilerAI · Cloud LLM · grounded in audit data" : "CompilerAI · Deterministic analyst · grounded in audit data"}
+            {source === "local_lm" ? "Local LM · grounded in audit data" : source === "llm" ? "Cloud LLM · grounded in audit data" : "Deterministic analyst · grounded in audit data"}
           </div>
         )}
       </div>
@@ -134,7 +134,7 @@ export default function ChatBot() {
           role: "ai",
           text:
             `**Audit complete.** Compliance index: **${pct}%** — ${pass} passed, ${fail} failed.\n\n` +
-            `Ask CompilerAI anything about this audit report — what failed, why it failed, or how to fix every issue so the next audit passes. Try the quick prompts below.`,
+            `Ask anything about this audit report — what failed, why it failed, or how to fix every issue so the next audit passes. Try the quick prompts below.`,
           source: "template",
         },
       ]);
@@ -145,10 +145,10 @@ export default function ChatBot() {
 
   const label =
     mode?.analyst_mode === "local_lm"
-      ? "CompilerAI · Local LM"
+      ? "Local LM"
       : mode?.analyst_mode === "llm"
-      ? "CompilerAI · Cloud LLM"
-      : "CompilerAI · Offline Analyst";
+      ? "Cloud LLM"
+      : "Offline Analyst";
 
   return (
     <>
@@ -160,7 +160,7 @@ export default function ChatBot() {
           title="Audit Report Assistant"
         >
           <span className="material-symbols-outlined text-[20px]">forum</span>
-          <span className="hidden sm:inline">Ask CompilerAI</span>
+          <span className="hidden sm:inline">Ask Analyst</span>
         </button>
       )}
 
@@ -174,7 +174,7 @@ export default function ChatBot() {
                 <span className="material-symbols-outlined text-[18px]">smart_toy</span>
               </div>
               <div>
-                <div className="font-display text-sm font-bold">CompilerAI Analyst</div>
+                <div className="font-display text-sm font-bold">Report Analyst</div>
                 <div className="font-mono text-[9px] uppercase tracking-wider opacity-70 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-[var(--pass)] animate-pulse"></span>
                   {label} · grounded in audit data
@@ -211,7 +211,7 @@ export default function ChatBot() {
                   <span className="material-symbols-outlined text-[26px]">psychology</span>
                 </div>
                 <p className="text-xs text-[var(--ink-soft)] leading-relaxed">
-                   Ask CompilerAI anything about this device&apos;s audit report — what failed, why, and how to fix it.
+                   Ask anything about this device&apos;s audit report — what failed, why, and how to fix it.
                 </p>
                 {devices.length === 0 && (
                   <p className="mt-2 text-[10px] font-mono text-[var(--warn)]">
@@ -266,7 +266,7 @@ export default function ChatBot() {
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask CompilerAI about the audit report…"
+              placeholder="Ask about the audit report…"
               className="input-field !text-xs"
               disabled={busy}
             />

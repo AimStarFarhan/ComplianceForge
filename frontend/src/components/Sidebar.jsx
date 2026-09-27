@@ -1,12 +1,15 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, Link } from "react-router-dom";
 import { useApi } from "../lib/api";
+import { useJobs } from "../lib/jobs";
 import { scoreColor } from "../lib/ui";
+
+const JOB_PCT = { queued: 5, uploading: 30, normalized: 55, auditing: 80, scored: 100, train: 100, error: 100 };
 
 const VENDORS = [
   { name: "Cisco IOS", key: "cisco_ios" },
   { name: "JunOS", key: "juniper_srx" },
   { name: "SONiC NOS", key: "sonic" },
-  { name: "Unseen (CompilerAI)", key: "unseen_vendor" },
+  { name: "Unseen vendor", key: "unseen_vendor" },
 ];
 
 export default function Sidebar() {
@@ -20,10 +23,12 @@ export default function Sidebar() {
   const vendorStatus = {};
   (data?.by_vendor || []).forEach((v) => (vendorStatus[v.vendor] = v));
   const totalMappings = training?.total_mappings ?? 0;
+  const { jobs, ACTIVE } = useJobs();
+  const activeJobs = jobs.filter((j) => ACTIVE.includes(j.stage));
 
   const nav = [
     { to: "/console", label: "Dashboard & Fleet", icon: "grid_view", end: true },
-    { to: "/console/training", label: "Training Loop", icon: "psychology", tag: "CompilerAI" },
+    { to: "/console/training", label: "Training Loop", icon: "psychology" },
     { to: "/console/devices", label: "Audits & Remediation", icon: "terminal" },
     { to: "/console/reports", label: "Reports & Evidence", icon: "verified" },
   ];
@@ -81,15 +86,57 @@ export default function Sidebar() {
                   <span className="material-symbols-outlined text-[19px]">{item.icon}</span>
                   <span>{item.label}</span>
                 </div>
-                {item.tag && (
-                  <span className="font-mono text-[9px] uppercase px-1.5 py-0.5 rounded bg-sprucePine text-softSage border border-mutedMeadow/50">
-                    {item.tag}
-                  </span>
-                )}
               </NavLink>
             ))}
           </nav>
         </div>
+
+        {/* Background processing — stays visible while switching tabs */}
+        {jobs.length > 0 && (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between px-1 py-0.5">
+              <span className="font-mono text-[10px] uppercase text-sageMuted tracking-wider">
+                Processing{activeJobs.length ? ` (${activeJobs.length})` : ""}
+              </span>
+              {activeJobs.length > 0 && (
+                <span className="w-1.5 h-1.5 rounded-full bg-mutedMeadow animate-pulse"></span>
+              )}
+            </div>
+            <div className="space-y-1.5 px-0.5">
+              {jobs.slice(0, 4).map((j) => (
+                <Link
+                  key={j.key}
+                  to="/console/upload"
+                  title={`${j.name} — ${j.stage}. Open lanes.`}
+                  className="block p-1.5 rounded bg-olivePanel border border-camoSeam hover:bg-oliveHover transition-all"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-[11px] text-softSage truncate">{j.name}</span>
+                    <span className="font-mono text-[9px] uppercase text-sageMuted shrink-0">
+                      {j.stage === "scored" && j.audit?.compliance_pct !== undefined
+                        ? `${j.audit.compliance_pct}%`
+                        : j.stage}
+                    </span>
+                  </div>
+                  <div className="h-1 rounded-full mt-1 overflow-hidden bg-oliveInk border border-camoSeam">
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{
+                        width: `${JOB_PCT[j.stage] ?? 0}%`,
+                        background: j.stage === "error" ? "var(--fail)" : "var(--pass)",
+                      }}
+                    />
+                  </div>
+                </Link>
+              ))}
+              {jobs.length > 4 && (
+                <Link to="/console/upload" className="block text-center font-mono text-[10px] text-sageMuted hover:text-softSage">
+                  +{jobs.length - 4} more in lanes →
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Vendor Parsers Widget */}
         <div className="space-y-1.5">
@@ -113,7 +160,7 @@ export default function Sidebar() {
 
         {/* Learned Mapping Cache */}
         <div className="space-y-1.5">
-          <div className="px-1 py-0.5 font-mono text-[10px] uppercase text-sageMuted tracking-wider">CompilerAI Rule Cache</div>
+          <div className="px-1 py-0.5 font-mono text-[10px] uppercase text-sageMuted tracking-wider">Learned Rule Cache</div>
           <div className="px-1 space-y-1 font-mono text-[11px] text-softSage">
             <div className="flex items-center justify-between">
               <span className="text-sageMuted">Human-confirmed mappings</span>
@@ -124,7 +171,7 @@ export default function Sidebar() {
               <span className="text-softSage font-bold">{training?.total_matches ?? 0}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sageMuted">CompilerAI-confirmed share</span>
+              <span className="text-sageMuted">AI-confirmed share</span>
               <span className="text-softSage font-bold">
                 {totalMappings ? `${Math.round(((training?.ai_confirmed ?? 0) / totalMappings) * 100)}%` : "—"}
               </span>
@@ -136,7 +183,7 @@ export default function Sidebar() {
       <div className="p-3 border-t border-camoSeam bg-oliveDeep">
         <div className="flex items-center justify-between text-sageMuted font-mono text-[11px]">
           <span className="flex items-center gap-1.5">
-            <span className="material-symbols-outlined text-[15px] text-softSage">lock</span>Secure Node
+            <span className="material-symbols-outlined text-[15px] text-softSage">lock</span>ComplianceForge
           </span>
           <span className="text-sageMuted/80">v1.0.0</span>
         </div>

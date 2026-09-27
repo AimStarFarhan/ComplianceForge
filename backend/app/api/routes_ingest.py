@@ -126,7 +126,10 @@ async def ingest_config(
             recognized_count += 1
         else:
             try:
-                proposal = clf.classify(ul["text"], db=db, vendor_hint=chosen_vendor)
+                # Fast path (no neural L3): ingest must stay interactive even
+                # with CF_USE_LOCAL_LM=1 — the queue recomputes proposals
+                # anyway and a human reviews every line.
+                proposal = clf.classify(ul["text"], db=db, vendor_hint=chosen_vendor, fast=True)
             except Exception:
                 proposal = None
             if proposal and proposal.get("category") not in (None, "unknown"):

@@ -381,15 +381,15 @@ def test_startup_refuses_default_credentials():
     assert p.returncode != 0, "must refuse to boot with default credentials"
 
 
-# ------------------------------------------------- CompilerAI visibility + history + revoke
+# ------------------------------------------------- AI visibility + history + revoke
 
-def test_compilerai_branding_in_health_chat_stats(auth):
+def test_ai_branding_in_health_chat_stats(auth):
     c, h = auth
-    assert c.get("/health").json()["ai_name"] == "CompilerAI"
+    assert c.get("/health").json()["ai_name"] == "AI"
     st = c.get("/chat/status", headers=h).json()
-    assert st["ai_name"] == "CompilerAI" and "CompilerAI" in st["label"]
-    assert c.get("/training/stats", headers=h).json()["ai_name"] == "CompilerAI"
-    assert c.get("/dashboard", headers=h).json()["model"]["ai_name"] == "CompilerAI"
+    assert st["ai_name"] == "AI" and "Analyst" in st["label"]
+    assert c.get("/training/stats", headers=h).json()["ai_name"] == "AI"
+    assert c.get("/dashboard", headers=h).json()["model"]["ai_name"] == "AI"
 
 
 def test_dashboard_recent_audits_lists_audited_devices(auth):
@@ -409,14 +409,14 @@ def test_dashboard_recent_audits_lists_audited_devices(auth):
 
 def test_trained_vendors_record_and_revoke(auth):
     c, h = auth
-    vendor = "compilerai-probe-os"
-    line = "compilerai-probe enable secure-shell v2"
+    vendor = "learn-probe-os"
+    line = "learn-probe enable secure-shell v2"
     r = c.post("/training/confirm", json={
         "example_line": line, "category": "ssh_policy", "vendor_hint": vendor,
     }, headers=h)
     assert r.status_code == 200, r.text
     vendors = c.get("/training/vendors", headers=h).json()
-    assert vendors["ai_name"] == "CompilerAI"
+    assert vendors["ai_name"] == "AI"
     mine = [v for v in vendors["vendors"] if v["vendor"] == vendor]
     assert mine and mine[0]["mappings"] >= 1
 
@@ -437,8 +437,8 @@ def test_trained_vendors_record_and_revoke(auth):
 def test_single_confirm_rejects_unknown_category(auth):
     c, h = auth
     r = c.post("/training/confirm", json={
-        "example_line": "compilerai-probe mystery syntax line",
+        "example_line": "learn-probe mystery syntax line",
         "category": "unknown",
-        "vendor_hint": "compilerai-probe-os",
+        "vendor_hint": "learn-probe-os",
     }, headers=h)
     assert r.status_code == 422, r.text

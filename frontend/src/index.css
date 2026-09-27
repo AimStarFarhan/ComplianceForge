@@ -297,3 +297,22 @@
   .m-fade-up, .m-shimmer, .m-orb, .m-marquee-track, .card:hover, .btn-primary:hover, .btn-ghost:hover,
   .animate-bounce-in, .chat-panel-in, .chat-msg-in { animation: none !important; transform: none !important; box-shadow: none !important; }
 }
+
+/* warmup splash — skeleton shimmer + growing bars + slow donut */
+.skeleton-bar {
+  background: linear-gradient(90deg, var(--pane-deep), var(--line), var(--pane-deep));
+  background-size: 200% 100%;
+  animation: skeletonShimmerCf 1.6s linear infinite;
+}
+@keyframes skeletonShimmerCf { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.skeleton-bargrow {
+  background: linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 55%, transparent));
+  height: 12%;
+  animation: barGrowCf 2.2s ease-in-out infinite alternate;
+}
+@keyframes barGrowCf { from { height: 12%; opacity: 0.55; } to { height: var(--bar-h, 60%); opacity: 1; } }
+.skeleton-donut { animation: donutSpinCf 6s linear infinite; }
+@keyframes donutSpinCf { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-bar, .skeleton-bargrow, .skeleton-donut { animation: none !important; }
+}

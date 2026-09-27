@@ -726,10 +726,7 @@ export default function Landing() {
           </div>
           <div className="mt-12 pt-6 border-t border-cfline flex flex-col sm:flex-row items-center justify-between gap-3 font-mono text-[10px] text-cfdim">
             <span>© 2026 ComplianceForge</span>
-            <span className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-cfpass animate-pulseSoft" />
-              All engine systems operational
-            </span>
+            <span>Advisory-only remediation · human-confirmed learning</span>
           </div>
         </div>
       </footer>

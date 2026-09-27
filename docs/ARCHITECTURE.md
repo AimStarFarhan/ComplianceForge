@@ -85,10 +85,10 @@ they either wait for a human or don't exist.
 | API | FastAPI (Python 3.11+), auto OpenAPI docs at `/docs` |
 | Persistence | SQLite + SQLAlchemy (Postgres-swappable) |
 | Parsing | Deterministic regex → Pydantic normalization |
-| AI layer | Anthropic Claude API (few-shot) with offline heuristic fallback |
+| AI layer | L1 exact cache → L2 trained sklearn (TF-IDF + LogReg) → L3 optional LLM (Claude / OpenAI / local LM) with offline heuristic default; proposes category only, never verdicts |
 | Rule engine | YAML packs + safe AST evaluator |
 | Reporting | ReportLab |
-| Frontend | React + Vite + Tailwind; dual theme: "Forensic Monochrome" light / "Industrial Telemetry" dark |
+| Frontend | React + Vite + Tailwind; dual theme (light / dark) |
 | Auth | JWT, single named admin role (the human in the loop) |
 
 ## 6. Extension path

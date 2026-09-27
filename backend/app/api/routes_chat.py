@@ -33,11 +33,11 @@ class ChatBody(BaseModel):
 def chat_status():
     mode = analyst_mode()
     label = {
-        "local_lm": "CompilerAI Analyst — Online (Local LM, air-gapped)",
-        "llm": "CompilerAI Analyst — Online (Cloud LLM)",
-        "template": "CompilerAI Analyst — Online (Deterministic, offline mode)",
+        "local_lm": "Analyst — Online (Local LM, air-gapped)",
+        "llm": "Analyst — Online (Cloud LLM)",
+        "template": "Analyst — Online (Deterministic, offline mode)",
     }.get(mode, mode)
-    return {"status": "ok", "analyst_mode": mode, "label": label, "ai_name": "CompilerAI"}
+    return {"status": "ok", "analyst_mode": mode, "label": label, "ai_name": "AI"}
 
 
 def _device_dict(device: Device) -> dict:

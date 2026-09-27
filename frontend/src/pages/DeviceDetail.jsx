@@ -32,7 +32,7 @@ function RemediationCard({ f, toast }) {
                 <span className="block text-[10px] opacity-75">Native: {f.maps_to}</span>
               )}
               {f.source === "ai_suggested_human_confirmed" && (
-                <span className="ml-2 px-1.5 py-0.5 rounded bg-sprucePine text-[#FCF9F0] font-bold text-[10px]">COMPILERAI + HUMAN-CONFIRMED</span>
+                <span className="ml-2 px-1.5 py-0.5 rounded bg-sprucePine text-[#FCF9F0] font-bold text-[10px]">AI + HUMAN-CONFIRMED</span>
               )}
             </span>
           </div>

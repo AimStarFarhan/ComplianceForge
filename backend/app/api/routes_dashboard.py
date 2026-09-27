@@ -85,14 +85,14 @@ def fleet_summary(db: Session = Depends(get_db)):
 
         _info = get_model_info()
         model_info = {
-            "ai_name": "CompilerAI",
+            "ai_name": "AI",
             "dataset_size": dataset_size(),
             "model_version": _info.get("model_version", 0),
             "accuracy": _info.get("accuracy"),
             "size_bytes": _info.get("size_bytes", 0),
         }
     except Exception:
-        model_info = {"ai_name": "CompilerAI", "dataset_size": 0, "model_version": 0, "accuracy": None, "size_bytes": 0}
+        model_info = {"ai_name": "AI", "dataset_size": 0, "model_version": 0, "accuracy": None, "size_bytes": 0}
 
     # Fleet-wide audit history: every device that has gone through the audit
     # tests, newest run first (powers the Dashboard "Audit History" timeline).

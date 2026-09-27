@@ -6,12 +6,10 @@ import { ThemeToggle } from "./ThemeToggle";
 
 export default function Header() {
   const { data } = useApi("/dashboard");
-  const { data: queue } = useApi("/training/stats");
   const { data: health } = useApi("/health");
   const location = useLocation();
 
   const fleet = data?.fleet_compliance_score;
-  const pending = queue?.total_mappings - queue?.total_matches >= 0 ? null : null; // placeholder, replaced below
   const fleetScore = fleet !== null && fleet !== undefined ? `${fleet}% Score` : "—";
   const deviceCount = data?.device_count ?? 0;
   const compliant = (data?.devices || []).filter((d) => (d.compliance_pct ?? 0) >= 80).length;
@@ -62,12 +60,12 @@ export default function Header() {
             ></span>
             <span>
               {health?.ai_mode === "local_lm"
-                ? "CompilerAI · Local LM"
+                ? "Local LM"
                 : health?.ai_mode === "llm"
-                  ? "CompilerAI · Cloud LLM"
+                  ? "Cloud LLM"
                   : health?.ai_mode === "deterministic"
-                    ? "CompilerAI · Deterministic"
-                    : "CompilerAI · …"}
+                    ? "Deterministic"
+                    : "…"}
             </span>
             {health?.model_version > 0 && (
               <span className="ml-1 px-1.5 py-px rounded bg-sprucePine border border-mutedMeadow/50 text-[#FCF9F0]">
@@ -95,7 +93,7 @@ export default function Header() {
           <div className="h-6 w-px bg-camoSeam hidden sm:block"></div>
           <div className="flex items-center gap-2.5">
             <div className="text-right hidden sm:block">
-              <div className="text-xs font-semibold text-softSage leading-tight font-display">Auditor SEC-9</div>
+              <div className="text-xs font-semibold text-softSage leading-tight font-display">Administrator</div>
               <div className="font-mono text-[10px] text-sageMuted">Admin / Human-in-the-Loop</div>
             </div>
             <div className="w-8 h-8 rounded bg-camoSeam border border-[#5C4A35] flex items-center justify-center text-softSage">

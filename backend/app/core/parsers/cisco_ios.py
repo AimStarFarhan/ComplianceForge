@@ -288,6 +288,27 @@ class CiscoIOSParser(BaseParser):
             self._unparsed(m, line_no, line)
             return
 
+        # Numbered ACL entries are single-line rules (e.g.
+        # `access-list 99 permit 10.0.0.0 0.255.255.255`). Parse them BEFORE
+        # the header branch below, which would otherwise swallow them via
+        # `^access-list\s+\d+` and leave acl.rules empty (CF-CISCO-012 then
+        # vacuously passes on `acl.rules == []` without ever evaluating).
+        mt = re.search(r"^access-list\s+(\d+)\s+(permit|deny)\s+(\S+)\s+(\S+)(?:\s+(\S+))?", line, re.I)
+        if mt:
+            logged = bool(re.search(r"\blog\b", line, re.I))
+            acl.rules.append(
+                ACLRule(
+                    raw=line,
+                    action=mt.group(2).lower(),
+                    protocol=mt.group(3),
+                    source=mt.group(4),
+                    destination=mt.group(5),
+                    logged=logged,
+                )
+            )
+            if logged:
+                acl.acl_logging_enabled = True
+            return
         if re.match(r"^ip access-list", line, re.I) or re.match(r"^access-list\s+\d+", line, re.I):
             self._acl_mode = True
             self._ctx = line
@@ -311,19 +332,6 @@ class CiscoIOSParser(BaseParser):
                 pass
             if logged:
                 acl.acl_logging_enabled = True
-            return
-        mt = re.search(r"^access-list\s+(\d+)\s+(permit|deny)\s+(\S+)\s+(\S+)(?:\s+(\S+))?", line, re.I)
-        if mt:
-            acl.rules.append(
-                ACLRule(
-                    raw=line,
-                    action=mt.group(2).lower(),
-                    protocol=mt.group(3),
-                    source=mt.group(4),
-                    destination=mt.group(5),
-                    logged=bool(re.search(r"\blog\b", line, re.I)),
-                )
-            )
             return
         # implicit deny: standard ACL ending in explicit deny
         for rule in acl.rules:

@@ -96,8 +96,13 @@ class TrainDeviceRequest(BaseModel):
 
 
 def _proposal_for(line: str, db: Session, vendor: str) -> dict:
-    """Server-side proposal: the single source of truth at decision time."""
-    return get_classifier().classify(line, db=db, vendor_hint=vendor)
+    """Server-side proposal: the single source of truth at decision time.
+
+    Fast path (no neural L3): confirm-time provenance must be instant or
+    every Confirm click hangs on a local-model call. The human decision is
+    what matters here, not squeezing a better proposal.
+    """
+    return get_classifier().classify(line, db=db, vendor_hint=vendor, fast=True)
 
 
 def _is_ai_source(source: str) -> bool:
@@ -203,8 +208,11 @@ def training_queue(db: Session = Depends(get_db)):
             model_version = None
         else:
             # unified L1 -> L2 -> L3 chain (L1 already checked above, so
-            # this is effectively L2 trained model -> L3 fallback)
-            proposal = classifier.classify(rep["raw_line"], db=db, vendor_hint=rep["vendor"])
+            # this is effectively L2 trained model -> L3 fallback).
+            # Fast path: neural L3 is skipped — with CF_USE_LOCAL_LM=1 each
+            # pattern would otherwise burn a full local-model inference
+            # (tens of seconds), hanging the whole queue page.
+            proposal = classifier.classify(rep["raw_line"], db=db, vendor_hint=rep["vendor"], fast=True)
             category, confidence, source = (
                 proposal["category"],
                 proposal["confidence"],
@@ -309,7 +317,7 @@ def list_mappings(db: Session = Depends(get_db)):
 @router.get("/vendors", dependencies=[Depends(verify_token)])
 def trained_vendors(db: Session = Depends(get_db)):
     """Past unknown-vendor training record: one row per vendor_hint that
-    CompilerAI has learned mappings for — mapping count, contributing
+    the classifier has learned mappings for — mapping count, contributing
     devices, reviewers, last trained. Revoke per vendor below."""
     from collections import defaultdict
 
@@ -332,7 +340,7 @@ def trained_vendors(db: Session = Depends(get_db)):
         if d.vendor in by_vendor:
             by_vendor[d.vendor]["device_ids"].add(d.device_id)
     return {
-        "ai_name": "CompilerAI",
+        "ai_name": "AI",
         "vendors": [
             {
                 "vendor": vendor,
@@ -385,7 +393,7 @@ def revoke_vendor(
         "vendor": vendor,
         "removed_mappings": len(rows),
         "reviewer": who,
-        "note": f"CompilerAI no longer recognizes '{vendor}' syntax — its lines return to the Training Queue.",
+        "note": f"The system no longer recognizes '{vendor}' syntax — its lines return to the Training Queue.",
     }
 
 
@@ -653,7 +661,7 @@ def training_stats(db: Session = Depends(get_db)):
     info = get_model_info()
     stats.update(
         {
-            "ai_name": "CompilerAI",
+            "ai_name": "AI",
             "dataset_size": dataset_size(),
             "model_version": info.get("model_version", 0),
             "model_accuracy": info.get("accuracy"),
