@@ -2,6 +2,12 @@
 
 **AI-augmented, vendor-agnostic network security compliance auditor.**
 
+🔗 **Live Demo (Production):**
+- https://complianceforge-beta.vercel.app
+- https://complianceforge-aimstarfarhans-projects.vercel.app
+
+> **Note:** Use the links above. The old direct deployment URL `complianceforge-gw9xivhfx-...` is a permanent snapshot of an old broken build and cannot be updated.
+
 ComplianceForge ingests raw CLI configuration files from network devices (Cisco IOS, Juniper SRX, SONiC), normalizes them into a single vendor-neutral security baseline, audits them against CIS-style hardening rule packs, routes unrecognized commands into a **human-in-the-loop training loop**, and generates professional PDF compliance reports with severity-ranked findings and exact remediation CLI.
 
 > **Design boundaries (deliberate):** advisory-only remediation (no auto-push to devices), static file upload (no live SSH polling in v1), depth-of-correctness on ~16-20 hand-verified rules per vendor.
