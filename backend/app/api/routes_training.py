@@ -593,9 +593,12 @@ def train_device(
     for v in validated:
         per_category[v["approval"].category] = per_category.get(v["approval"].category, 0) + 1
     approved_keys = {(v["approval"].line_number, v["approval"].raw_line) for v in validated}
-    unresolved = sorted(
-        {"line_number": n, "raw_line": t} for (n, t) in unparsed if (n, t) not in approved_keys
-    )
+    # sort the (line, text) tuples — never the dicts (dicts are unorderable
+    # and crashed partial approvals with a 500 whenever ≥2 lines stayed out)
+    unresolved = [
+        {"line_number": n, "raw_line": t}
+        for (n, t) in sorted(unparsed - approved_keys)
+    ]
     summary = {
         "device_id": req.device_id,
         "reviewer": who,
